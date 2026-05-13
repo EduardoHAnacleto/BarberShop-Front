@@ -7,6 +7,10 @@ export default defineNuxtConfig({
   // Build/compat date pinned to keep Nitro/Nuxt feature flags deterministic.
   compatibilityDate: '2025-04-01',
 
+  // Disabled until Sprint 5 adds the public landing page that benefits from SSR.
+  // Axios 1.x imports form-data on the server which is not available in this project.
+  ssr: false,
+
   // First-party modules required by Sprint 1 onward.
   modules: [
     '@nuxtjs/tailwindcss',
