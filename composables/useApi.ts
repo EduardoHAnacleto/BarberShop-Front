@@ -116,7 +116,7 @@ export function useApi() {
       create: (body: AppointmentRequest) => post<Appointment>('/api/appointments', body),
       update: (id: number, body: AppointmentRequest) =>
         put<Appointment>(`/api/appointments/${id}`, body),
-      delete: (id: number) => del<undefined>(`/api/appointments/${id}`),
+      delete: (id: number) => del<null>(`/api/appointments/${id}`),
       byRange: (start: string, end: string) =>
         get<Appointment[]>('/api/appointments/range', { dateStart: start, dateEnd: end }),
       byWorker: (workerId: number) =>
@@ -129,9 +129,9 @@ export function useApi() {
         get<Appointment[]>(`/api/appointments/status/${status}`),
       // Shifts a batch of appointments by the given HH:MM:SS timespan.
       delay: (idList: number[], timeSpan: string) =>
-        post<undefined>('/api/appointments/delay', { idList, timeSpan }),
+        post<null>('/api/appointments/delay', { idList, timeSpan }),
       // Cancels a batch of appointments in one request.
-      cancel: (idList: number[]) => post<undefined>('/api/appointments/cancel', { idList }),
+      cancel: (idList: number[]) => post<null>('/api/appointments/cancel', { idList }),
     },
 
     // Worker CRUD and service-filter endpoints.
@@ -140,7 +140,7 @@ export function useApi() {
       byId: (id: number) => get<Worker>(`/api/workers/${id}`),
       create: (body: Partial<Worker>) => post<Worker>('/api/workers', body),
       update: (id: number, body: Partial<Worker>) => put<Worker>(`/api/workers/${id}`, body),
-      delete: (id: number) => del<undefined>(`/api/workers/${id}`),
+      delete: (id: number) => del<null>(`/api/workers/${id}`),
       servicesByWorker: (id: number) => get<Service[]>(`/api/workers/by-worker/${id}`),
       workersByService: (id: number) => get<Worker[]>(`/api/workers/by-service/${id}`),
     },
@@ -152,7 +152,7 @@ export function useApi() {
       create: (body: Partial<Customer>) => post<Customer>('/api/customers', body),
       update: (id: number, body: Partial<Customer>) =>
         put<Customer>(`/api/customers/${id}`, body),
-      delete: (id: number) => del<undefined>(`/api/customers/${id}`),
+      delete: (id: number) => del<null>(`/api/customers/${id}`),
     },
 
     // Service CRUD endpoints.
@@ -161,7 +161,7 @@ export function useApi() {
       byId: (id: number) => get<Service>(`/api/services/${id}`),
       create: (body: Partial<Service>) => post<Service>('/api/services', body),
       update: (id: number, body: Partial<Service>) => put<Service>(`/api/services/${id}`, body),
-      delete: (id: number) => del<undefined>(`/api/services/${id}`),
+      delete: (id: number) => del<null>(`/api/services/${id}`),
     },
 
     // User account management endpoints (note: no /api prefix per the spec).
@@ -170,7 +170,7 @@ export function useApi() {
       byId: (id: number) => get<User>(`/users/${id}`),
       create: (body: UserRequest) => post<User>('/users', body),
       update: (id: number, body: UserRequest) => put<User>(`/users/${id}`, body),
-      delete: (id: number) => del<undefined>(`/users/${id}`),
+      delete: (id: number) => del<null>(`/users/${id}`),
     },
 
     // Business schedule and closure endpoints.
@@ -182,7 +182,7 @@ export function useApi() {
       getClosures: () => get<WorkingHours[]>('/api/working-hours/closures'),
       addClosure: (body: Partial<WorkingHours>) =>
         post<WorkingHours>('/api/working-hours/closures', body),
-      removeClosure: (id: number) => del<undefined>(`/api/working-hours/closures/${id}`),
+      removeClosure: (id: number) => del<null>(`/api/working-hours/closures/${id}`),
       isOpen: (dateTime: string) =>
         get<{ isOpen: boolean }>('/api/working-hours/is-open', { dateTime }),
     },

@@ -58,7 +58,7 @@ function isActive(to: string): boolean {
         :to="item.to"
         class="sidebar-link"
         :class="{ active: isActive(item.to) }"
-        :aria-label="collapsed ? item.label : undefined"
+        :aria-label="collapsed ? item.label : null"
       >
         <!-- Icon is always visible. -->
         <SidebarIcon :icon="item.icon" class="flex-shrink-0" />

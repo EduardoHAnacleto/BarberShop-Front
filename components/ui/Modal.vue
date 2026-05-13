@@ -6,12 +6,12 @@ const props = withDefaults(
   defineProps<{
     // Whether the modal is currently visible.
     modelValue: boolean
-    // Optional heading shown in the modal header area.
-    title?: string
+    // Optional heading shown in the modal header area. Defaults to null (no header).
+    title?: string | null
     // Controls the maximum width of the panel.
     size?: 'sm' | 'md' | 'lg'
   }>(),
-  { size: 'md', title: undefined },
+  { size: 'md', title: null },
 )
 
 const emit = defineEmits<{

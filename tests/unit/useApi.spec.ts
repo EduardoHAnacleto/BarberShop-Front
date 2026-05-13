@@ -39,12 +39,12 @@ const { api } = useApi()
 
 // Captures the Authorization header from each request so interceptor tests
 // can assert on it without per-test handler overrides.
-let lastAuthHeader: string | undefined
+let lastAuthHeader: string | null = null
 
 const server = setupServer(
   // Default handler: schedule endpoint — stores the Authorization header value.
   http.get('http://localhost:8080/api/working-hours/schedule', ({ request }) => {
-    lastAuthHeader = request.headers.get('Authorization') ?? undefined
+    lastAuthHeader = request.headers.get('Authorization')
     return HttpResponse.json([{ id: 1, dayOfWeek: 1 }])
   }),
 
@@ -58,7 +58,7 @@ const server = setupServer(
 beforeAll(() => server.listen({ onUnhandledRequest: 'error' }))
 afterEach(() => {
   server.resetHandlers()
-  lastAuthHeader = undefined
+  lastAuthHeader = null
   mockCookieValue = null
   mockNavigateTo.mockReset()
 })
@@ -76,7 +76,7 @@ describe('request interceptor', () => {
   it('does not add Authorization header when cookie is absent', async () => {
     mockCookieValue = null
     await api.schedule.getSchedule()
-    expect(lastAuthHeader).toBeUndefined()
+    expect(lastAuthHeader).toBeNull()
   })
 })
 
