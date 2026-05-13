@@ -4,11 +4,25 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project status
 
-This repository is the **frontend** for BarberShop. As of this writing, the codebase has not yet been bootstrapped — the only file checked in besides this one is the sprint plan. All work follows that plan in strict order.
+This repository is the **frontend** for BarberShop. All work follows the sprint plan in strict order — each sprint is gated by the previous sprint's DoD being 100% green.
 
 - **Authoritative plan:** `.claude/barbershop-frontend-sprints.md` — read this before starting any task. It defines every file to be created, every API contract, every DoD checkpoint, and every test that must pass per sprint.
 - **Companion backend (already in production):** `C:\GitHub\BarberShop` — ASP.NET Core 10, running locally on `http://localhost:8080`. DTOs and enum values in `types/index.ts` MUST match this API exactly (numeric enums are not arbitrary: `AppointmentStatus 0-4`, `UserRole 0/1/3`, `ClosureType 0-1`).
-- **GitHub remote:** `https://github.com/EduardoHAnacleto/BarberShop-Front` (HTTPS, already configured as `origin`).
+- **GitHub remote:** `https://github.com/EduardoHAnacleto/BarberShop-Front` (HTTPS, already configured as `origin`). Nothing has been pushed yet — local-only.
+
+## Progress
+
+Update this section after closing each sprint sub-task so future sessions can pick up without re-deriving state. Source of truth is the git log; this is just a fast index.
+
+**Sprint 1 — Foundation**
+- [x] **S1.1 Repository and Tooling** — `package.json` (pinned deps), `nuxt.config.ts`, `tsconfig.json` (strict), `eslint.config.mjs`, `.prettierrc.json`, `.env.example`/`.env.local`, `app.vue`, full folder skeleton. DoD verified: lint 0, vue-tsc 0, build OK. Commit: `feat(s1.1)`. Note: `@nuxt/test-utils` had to be pinned to `~3.15.0` (newer 3.23+ requires vitest 3, plan locks vitest to 2.x). `assets/css/global.css` exists as a Tailwind-directives-only placeholder; S1.2 replaces it.
+- [x] **S1.2 Design System** — `tailwind.config.ts` (gold/obsidian palettes, surface aliases, Playfair/DM Sans/DM Mono fonts, 5 animations + keyframes, 4 shadows). Full `assets/css/global.css` with `@layer base` (CSS vars, reset, scrollbar, selection), `@layer components` (all btn/input/card/badge/table/sidebar/modal/toast/transition classes), `@layer utilities` (semantic text/bg/border helpers). `pages/dev.vue` sandbox for visual DoD. DoD verified: lint 0, vue-tsc 0, build OK, no raw hex in Tailwind arbitrary syntax. Commit: `feat(s1.2)`. Note: fonts/animations require browser verification via `/dev` page.
+- [ ] S1.3 TypeScript Types
+- [ ] S1.4 Infrastructure Composables (useApi, useAuth, useToast, useSignalR)
+- [ ] S1.5 Middleware, Layouts, Base Components, /login page
+- [ ] S1.6 Sprint 1 Tests (unit + E2E auth)
+
+Sprints 2–8 not started.
 
 ## Stack (locked by the plan — do not substitute)
 
