@@ -1,0 +1,6 @@
+/* Global stylesheet. S1.1 ships only the Tailwind directives so the bundler
+   resolves the import; S1.2 will populate this file with the design system
+   tokens, @layer base/components/utilities declarations, and transitions. */
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
