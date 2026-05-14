@@ -14,6 +14,7 @@ const form = reactive({
   email: '',
   password: '',
   phone: '',
+  dateOfBirth: '',
 })
 
 // Controls spinner on submit button.
@@ -46,6 +47,7 @@ async function handleRegister(): Promise<void> {
       email: form.email.trim(),
       password: form.password,
       phoneNumber: form.phone.trim(),
+      dateOfBirth: form.dateOfBirth || null,
     })
 
     // Hydrate auth state from the returned token so the user is logged in.
@@ -164,6 +166,17 @@ async function handleRegister(): Promise<void> {
               type="tel"
               autocomplete="tel"
               placeholder="+1 555 000 0000"
+              class="input w-full"
+            >
+          </div>
+
+          <div class="form-group">
+            <label class="label" for="reg-dob">Date of Birth <span class="text-muted">(optional)</span></label>
+            <input
+              id="reg-dob"
+              v-model="form.dateOfBirth"
+              type="date"
+              autocomplete="bday"
               class="input w-full"
             >
           </div>

@@ -106,7 +106,7 @@ export function useApi() {
     auth: {
       login: (body: LoginRequest) => post<AuthResponse>('/api/auth/login', body),
       google: (idToken: string) => post<AuthResponse>('/api/auth/google', { idToken }),
-      register: (body: { name: string; email: string; password: string; phoneNumber: string }) =>
+      register: (body: { name: string; email: string; password: string; phoneNumber: string; dateOfBirth: string | null }) =>
         post<AuthResponse>('/api/auth/register', body),
       unlock: (userId: number) => post<string>(`/api/auth/unlock/${userId}`),
     },
