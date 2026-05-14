@@ -4,6 +4,8 @@
 // Right column: past appointments (completed, cancelled, etc.).
 import type { Customer, Appointment } from '~/types'
 import { AppointmentStatus } from '~/types'
+import { isInDateRange, byProximityToNow } from '~/utils/appointmentFilters'
+import type { DateFilter } from '~/utils/appointmentFilters'
 
 definePageMeta({ layout: 'default', middleware: 'auth' })
 
@@ -20,6 +22,9 @@ const noProfile = ref(false)
 
 // ID of the appointment currently being cancelled (null = none in flight).
 const cancellingId = ref<number | null>(null)
+
+// Active date-range filter — 'all' shows every appointment.
+const filter = ref<DateFilter>('all')
 
 // ── Profile edit ──────────────────────────────────────────────────────────────
 
@@ -66,20 +71,25 @@ async function saveProfile(): Promise<void> {
 
 const now = new Date()
 
+// Keeps only appointments whose scheduledFor falls inside the selected period.
+const filtered = computed(() =>
+  appointments.value.filter((a) => isInDateRange(a.scheduledFor, filter.value)),
+)
+
 // Upcoming: Scheduled status with a future date, OR currently OnGoing.
 const activeAppointments = computed(() =>
-  appointments.value
+  filtered.value
     .filter(
       (a) =>
         a.status === AppointmentStatus.OnGoing ||
         (a.status === AppointmentStatus.Scheduled && new Date(a.scheduledFor) > now),
     )
-    .sort((a, b) => new Date(a.scheduledFor).getTime() - new Date(b.scheduledFor).getTime()),
+    .sort((a, b) => byProximityToNow(a, b, 'asc')),
 )
 
 // Past: completed, cancelled, deleted, or scheduled but date already passed.
 const pastAppointments = computed(() =>
-  appointments.value
+  filtered.value
     .filter(
       (a) =>
         a.status === AppointmentStatus.Completed ||
@@ -87,7 +97,7 @@ const pastAppointments = computed(() =>
         a.status === AppointmentStatus.Deleted ||
         (a.status === AppointmentStatus.Scheduled && new Date(a.scheduledFor) <= now),
     )
-    .sort((a, b) => new Date(b.scheduledFor).getTime() - new Date(a.scheduledFor).getTime()),
+    .sort((a, b) => byProximityToNow(a, b, 'desc')),
 )
 
 // ── Cancel ────────────────────────────────────────────────────────────────────
@@ -211,7 +221,14 @@ onMounted(loadData)
         </div>
 
         <!-- ── Appointments split view ── -->
-        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div class="space-y-4">
+          <!-- Filter bar header row. -->
+          <div class="flex flex-wrap items-center justify-between gap-4">
+            <h2 class="font-display text-xl text-primary">Appointments</h2>
+            <SharedDateRangeFilter v-model="filter" />
+          </div>
+
+          <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
           <!-- Left: upcoming and ongoing. -->
           <div>
             <h3 class="font-display text-lg text-primary mb-3">Upcoming & Ongoing</h3>
@@ -247,6 +264,7 @@ onMounted(loadData)
               />
             </div>
           </div>
+        </div>
         </div>
       </template>
     </div>

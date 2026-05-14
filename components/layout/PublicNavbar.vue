@@ -1,7 +1,22 @@
 <script setup lang="ts">
 // Sticky public navigation bar with backdrop-blur.
-// Shows "My Account" for any logged-in user and "Admin" for admins.
-const { isLoggedIn, isAdmin } = useAuth()
+// Shows "My Account" for any logged-in user, "My Schedule" for workers, and "Admin" for admins.
+const { isLoggedIn, isAdmin, userId } = useAuth()
+const { api } = useApi()
+
+// True when the logged-in user has a linked worker profile.
+const isWorker = ref(false)
+
+watchEffect(async () => {
+  const uid = Number(userId.value)
+  if (!uid) { isWorker.value = false; return }
+  try {
+    const user = await api.users.byId(uid)
+    isWorker.value = !!user.workerId
+  } catch {
+    isWorker.value = false
+  }
+})
 </script>
 
 <template>
@@ -33,6 +48,10 @@ const { isLoggedIn, isAdmin } = useAuth()
         <!-- My Account: shown for any logged-in user. -->
         <NuxtLink v-if="isLoggedIn" to="/my" class="text-sm text-secondary hover:text-primary transition-colors">
           My Account
+        </NuxtLink>
+        <!-- My Schedule: only for users with a linked worker profile. -->
+        <NuxtLink v-if="isWorker" to="/worker" class="text-sm text-secondary hover:text-primary transition-colors">
+          My Schedule
         </NuxtLink>
         <!-- Admin shortcut: only for admin-role users. -->
         <NuxtLink v-if="isAdmin" to="/admin" class="btn-ghost text-sm py-1 px-3">
