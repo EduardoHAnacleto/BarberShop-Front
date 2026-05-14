@@ -183,6 +183,25 @@ describe('useAuth — computed flags', () => {
     expect(isAdmin.value).toBe(false)
   })
 
+  it('isAdmin returns true when role is under the .NET Microsoft claim URI', async () => {
+    // .NET JwtSecurityTokenHandler emits role under the long claim URI by
+    // default. The composable must accept that variant too.
+    const header = btoa(JSON.stringify({ alg: 'HS256', typ: 'JWT' }))
+    const body = btoa(JSON.stringify({
+      sub: '1',
+      email: 'admin@b.com',
+      'http://schemas.microsoft.com/ws/2008/06/identity/claims/role': 'Admin',
+      exp: Math.floor(Date.now() / 1000) + 3600,
+    }))
+    const token = `${header}.${body}.signature`
+    mockApiLogin.mockResolvedValueOnce({ token, email: 'admin@b.com', userRole: 'Admin' })
+
+    const { login, isAdmin } = useAuth()
+    await login('admin@b.com', 'pw')
+
+    expect(isAdmin.value).toBe(true)
+  })
+
   it('isLoggedIn returns true when token is present', async () => {
     const token = makeToken({})
     mockApiLogin.mockResolvedValueOnce({ token, email: 'a@b.com', userRole: 'Admin' })

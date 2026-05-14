@@ -4,11 +4,17 @@
 import { jwtDecode } from 'jwt-decode'
 import type { AuthResponse } from '~/types'
 
+// .NET's default JwtSecurityTokenHandler emits role under the long Microsoft
+// claim URI rather than the short "role" key. We accept either so the same
+// composable works against any IdP that follows the JWT short-name convention.
+const ROLE_CLAIM_URI = 'http://schemas.microsoft.com/ws/2008/06/identity/claims/role'
+
 // Shape of the decoded JWT payload issued by the BarberShop API.
 interface JwtPayload {
   sub: string
   email: string
-  role: string
+  role?: string
+  'http://schemas.microsoft.com/ws/2008/06/identity/claims/role'?: string
   exp: number
 }
 
@@ -57,7 +63,7 @@ export function useAuth() {
     state.value = {
       token,
       email: decoded.email,
-      role: decoded.role,
+      role: decoded.role ?? decoded[ROLE_CLAIM_URI] ?? null,
       userId: decoded.sub,
     }
     tokenCookie.value = token
