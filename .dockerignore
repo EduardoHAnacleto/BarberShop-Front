@@ -1,0 +1,16 @@
+node_modules
+.nuxt
+.output
+.nitro
+.cache
+dist
+coverage
+playwright-report
+test-results
+.env
+.env.local
+.env.*.local
+.env.staging
+.git
+*.md
+tests/
