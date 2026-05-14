@@ -16,9 +16,10 @@ const loading = ref(false)
 const showPassword = ref(false)
 
 // Redirect authenticated users away from the login page immediately.
+// Admins go to /admin; all other roles go to /my (client portal).
 watchEffect(() => {
   if (isLoggedIn.value) {
-    const redirect = (route.query.redirect as string) || (isAdmin.value ? '/admin' : '/')
+    const redirect = (route.query.redirect as string) || (isAdmin.value ? '/admin' : '/my')
     navigateTo(redirect)
   }
 })
@@ -148,6 +149,12 @@ onMounted(() => {
           <span>{{ loading ? 'Signing in…' : 'Sign in' }}</span>
         </button>
       </form>
+
+      <!-- Link to registration for new visitors. -->
+      <p class="text-center text-sm text-muted mt-5">
+        Don't have an account?
+        <NuxtLink to="/register" class="text-gold-400 hover:underline ml-1">Create one</NuxtLink>
+      </p>
 
       <!-- Divider and Google sign-in are hidden when no client ID is configured. -->
       <template v-if="googleEnabled">

@@ -1,7 +1,7 @@
 <script setup lang="ts">
 // Sticky public navigation bar with backdrop-blur.
-// Shows the Admin button only when the visitor is already authenticated.
-const { isLoggedIn } = useAuth()
+// Shows "My Account" for any logged-in user and "Admin" for admins.
+const { isLoggedIn, isAdmin } = useAuth()
 </script>
 
 <template>
@@ -30,8 +30,12 @@ const { isLoggedIn } = useAuth()
         <NuxtLink to="/book" class="text-sm text-secondary hover:text-primary transition-colors">
           Book
         </NuxtLink>
-        <!-- Only rendered when the visitor has a valid session. -->
-        <NuxtLink v-if="isLoggedIn" to="/admin" class="btn-ghost text-sm py-1 px-3">
+        <!-- My Account: shown for any logged-in user. -->
+        <NuxtLink v-if="isLoggedIn" to="/my" class="text-sm text-secondary hover:text-primary transition-colors">
+          My Account
+        </NuxtLink>
+        <!-- Admin shortcut: only for admin-role users. -->
+        <NuxtLink v-if="isAdmin" to="/admin" class="btn-ghost text-sm py-1 px-3">
           Admin
         </NuxtLink>
       </nav>
