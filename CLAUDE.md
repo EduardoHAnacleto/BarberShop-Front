@@ -63,6 +63,8 @@ Running a single test:
 
 E2E preconditions: the backend must be reachable at `http://localhost:8080` with seed user `admin@barbershop.com / Admin@123`. Bring up the API stack from `C:\GitHub\BarberShop` (its docker-compose) before running E2E.
 
+**Seed-hash gotcha:** the SQL seed in `C:\GitHub\BarberShop\database\schema.sql` claims the admin password is `Admin@123` but ships the well-known Spring-example hash (`$2a$11$92IXUNpkjO...`) which decodes to something else. After fresh `docker compose up`, regenerate the hash for `Admin@123` (e.g. `node -e "console.log(require('bcryptjs').hashSync('Admin@123', 11))"`) and run `UPDATE Users SET UserPasswordHash = '<new>', UserLockoutEnd = NULL, UserFailedLoginAttempts = 0 WHERE UserEmail = 'admin@barbershop.com'` inside the `barbershop-sqlserver` container. After 5 failed attempts the account locks for 15 min — same `UPDATE` clears it.
+
 ## Architecture (the shape you must build toward)
 
 **Two-surface app, single Nuxt project:**

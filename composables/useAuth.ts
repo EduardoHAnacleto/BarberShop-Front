@@ -29,10 +29,12 @@ export function useAuth() {
     userId: null,
   }))
 
-  // Cookie persists across page reloads and tab opens (24 h, secure, lax).
+  // Cookie persists across page reloads and tab opens (24 h, sameSite: lax).
+  // `secure` is enabled in production only; dev runs over plain HTTP on localhost
+  // and browsers refuse to set Secure cookies on non-HTTPS origins.
   const tokenCookie = useCookie<string | null>('bs_token', {
     maxAge: 86_400,
-    secure: true,
+    secure: !import.meta.dev,
     sameSite: 'lax',
   })
 

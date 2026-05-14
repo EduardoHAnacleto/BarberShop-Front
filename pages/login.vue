@@ -30,6 +30,11 @@ async function handleLogin(): Promise<void> {
   loading.value = false
 }
 
+// True when a Google OAuth client ID has been configured. When false, the
+// Google sign-in button is hidden — initialising GSI with an empty client_id
+// throws "parameter client_id is not set correctly".
+const googleEnabled = computed(() => !!useRuntimeConfig().public.googleClientId)
+
 // Initialises the Google Identity Services button in the #google-btn container.
 function initGoogle(): void {
   // window.google is injected by the GSI script loaded in nuxt.config.ts head.
@@ -48,8 +53,11 @@ function initGoogle(): void {
 }
 
 // Mount the Google button once the SDK is available. Retries every 200 ms
-// until window.google is defined (the script loads async).
+// until window.google is defined (the script loads async). Skipped entirely
+// when no client ID is configured (typical for local development).
 onMounted(() => {
+  if (!googleEnabled.value) return
+
   const interval = setInterval(() => {
     if (window.google) {
       clearInterval(interval)
@@ -141,16 +149,19 @@ onMounted(() => {
         </button>
       </form>
 
-      <!-- Divider between email/password and Google sign-in. -->
-      <div class="flex items-center gap-3 my-5">
-        <div class="flex-1 divider" />
-        <span class="text-xs text-muted font-mono">or</span>
-        <div class="flex-1 divider" />
-      </div>
+      <!-- Divider and Google sign-in are hidden when no client ID is configured. -->
+      <template v-if="googleEnabled">
+        <!-- Divider between email/password and Google sign-in. -->
+        <div class="flex items-center gap-3 my-5">
+          <div class="flex-1 divider" />
+          <span class="text-xs text-muted font-mono">or</span>
+          <div class="flex-1 divider" />
+        </div>
 
-      <!-- Google Identity Services button. The SDK renders into this div
-           once the GSI script finishes loading (handled in initGoogle). -->
-      <div id="google-btn" class="flex justify-center" />
+        <!-- Google Identity Services button. The SDK renders into this div
+             once the GSI script finishes loading (handled in initGoogle). -->
+        <div id="google-btn" class="flex justify-center" />
+      </template>
     </div>
   </div>
 </template>
