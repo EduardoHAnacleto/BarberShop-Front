@@ -1,12 +1,10 @@
 <script setup lang="ts">
-// Public registration page. Creates a customer record and a Client-role user
-// account in sequence, then auto-logs in and redirects to the client portal.
-import { UserRole } from '~/types'
-
+// Public client registration page.
+// Calls POST /api/auth/register (single endpoint), shows a success screen,
+// then redirects to the landing page after a brief confirmation delay.
 definePageMeta({ layout: 'default' })
 
-const router = useRouter()
-const { login, isLoggedIn } = useAuth()
+const { setToken, isLoggedIn } = useAuth()
 const { api } = useApi()
 const toast = useToast()
 
@@ -24,6 +22,9 @@ const loading = ref(false)
 // Whether the password field shows plain text.
 const showPassword = ref(false)
 
+// Shown after successful registration while the countdown runs.
+const registered = ref(false)
+
 // Redirect already-authenticated users straight to their portal.
 watchEffect(() => {
   if (isLoggedIn.value) navigateTo('/my')
@@ -39,32 +40,25 @@ async function handleRegister(): Promise<void> {
   loading.value = true
 
   try {
-    // Step 1: create the customer record to get a customerId.
-    const customer = await api.customers.create({
+    // Single endpoint: creates customer + user and returns a JWT.
+    const res = await api.auth.register({
       name: form.name.trim(),
       email: form.email.trim(),
+      password: form.password,
       phoneNumber: form.phone.trim(),
     })
 
-    // Step 2: create the user account linked to that customer.
-    // Backend hashes the plain-text password; userRole 0 = Client.
-    await api.users.create({
-      email: form.email.trim(),
-      passwordHash: form.password,
-      userRole: UserRole.Client,
-      isActive: true,
-      customerId: customer.id,
-    })
+    // Hydrate auth state from the returned token so the user is logged in.
+    setToken(res.token)
 
-    // Step 3: auto-login so the session is established immediately.
-    const ok = await login(form.email.trim(), form.password)
-    if (ok) {
-      await router.push('/my')
-    }
+    registered.value = true
+
+    // Redirect to the landing page after 3 s so the user can read the confirmation.
+    setTimeout(() => navigateTo('/'), 3000)
   } catch (err: unknown) {
-    const msg =
-      (err as { response?: { data?: string } }).response?.data ?? 'Registration failed. Please try again.'
-    toast.error(typeof msg === 'string' ? msg : 'Registration failed. Please try again.')
+    const raw = (err as { response?: { data?: unknown } }).response?.data
+    const msg = typeof raw === 'string' ? raw : 'Registration failed. Please try again.'
+    toast.error(msg)
   } finally {
     loading.value = false
   }
@@ -72,106 +66,126 @@ async function handleRegister(): Promise<void> {
 </script>
 
 <template>
-  <!-- Full-height centred layout matching the login page style. -->
   <div class="min-h-screen flex items-center justify-center relative overflow-hidden px-4">
     <!-- Decorative ambient blobs. -->
     <div class="absolute -top-32 -left-32 w-96 h-96 rounded-full bg-gold-500/[0.03] blur-3xl pointer-events-none" />
     <div class="absolute -bottom-32 -right-32 w-96 h-96 rounded-full bg-gold-500/[0.03] blur-3xl pointer-events-none" />
 
     <div class="relative z-10 w-full max-w-sm">
-      <!-- Logo and heading. -->
-      <div class="text-center mb-8">
+
+      <!-- ── Success confirmation ── -->
+      <div v-if="registered" class="text-center space-y-4">
+        <!-- Animated checkmark. -->
         <div
-          class="w-14 h-14 rounded-xl bg-gold-500/20 border border-gold-500/30
-                 flex items-center justify-center mx-auto mb-4"
+          class="w-16 h-16 rounded-full bg-emerald-500/20 border border-emerald-500/30
+                 flex items-center justify-center mx-auto"
         >
-          <span class="font-display font-bold text-gold-400 text-2xl">B</span>
+          <svg class="w-8 h-8 text-emerald-400" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+            <path d="M20 6L9 17l-5-5" />
+          </svg>
         </div>
-        <h1 class="font-display text-2xl text-primary">Create an account</h1>
-        <p class="text-secondary text-sm mt-1">Book appointments and manage your profile.</p>
+        <h1 class="font-display text-2xl text-primary">Account created!</h1>
+        <p class="text-secondary text-sm">
+          Welcome, {{ form.name.split(' ')[0] }}!<br>
+          Redirecting you to the home page…
+        </p>
+        <NuxtLink to="/" class="btn-primary inline-block mt-2">Go now →</NuxtLink>
       </div>
 
-      <!-- Registration form. -->
-      <form class="space-y-4" @submit.prevent="handleRegister">
-        <div class="form-group">
-          <label class="label" for="reg-name">Full Name</label>
-          <input
-            id="reg-name"
-            v-model="form.name"
-            type="text"
-            required
-            autocomplete="name"
-            placeholder="John Doe"
-            class="input w-full"
+      <!-- ── Registration form ── -->
+      <template v-else>
+        <!-- Logo and heading. -->
+        <div class="text-center mb-8">
+          <div
+            class="w-14 h-14 rounded-xl bg-gold-500/20 border border-gold-500/30
+                   flex items-center justify-center mx-auto mb-4"
           >
-        </div>
-
-        <div class="form-group">
-          <label class="label" for="reg-email">Email</label>
-          <input
-            id="reg-email"
-            v-model="form.email"
-            type="email"
-            required
-            autocomplete="email"
-            placeholder="john@example.com"
-            class="input w-full"
-          >
-        </div>
-
-        <div class="form-group">
-          <label class="label" for="reg-password">Password</label>
-          <div class="relative">
-            <input
-              id="reg-password"
-              v-model="form.password"
-              :type="showPassword ? 'text' : 'password'"
-              required
-              autocomplete="new-password"
-              placeholder="At least 6 characters"
-              class="input w-full pr-10"
-            >
-            <button
-              type="button"
-              class="absolute right-3 top-1/2 -translate-y-1/2 text-muted hover:text-secondary transition-colors"
-              :aria-label="showPassword ? 'Hide password' : 'Show password'"
-              @click="showPassword = !showPassword"
-            >
-              <SidebarIcon :icon="showPassword ? 'eye-off' : 'eye'" />
-            </button>
+            <span class="font-display font-bold text-gold-400 text-2xl">B</span>
           </div>
+          <h1 class="font-display text-2xl text-primary">Create an account</h1>
+          <p class="text-secondary text-sm mt-1">Book appointments and manage your profile.</p>
         </div>
 
-        <div class="form-group">
-          <label class="label" for="reg-phone">Phone <span class="text-muted">(optional)</span></label>
-          <input
-            id="reg-phone"
-            v-model="form.phone"
-            type="tel"
-            autocomplete="tel"
-            placeholder="+1 555 000 0000"
-            class="input w-full"
+        <form class="space-y-4" @submit.prevent="handleRegister">
+          <div class="form-group">
+            <label class="label" for="reg-name">Full Name</label>
+            <input
+              id="reg-name"
+              v-model="form.name"
+              type="text"
+              required
+              autocomplete="name"
+              placeholder="John Doe"
+              class="input w-full"
+            >
+          </div>
+
+          <div class="form-group">
+            <label class="label" for="reg-email">Email</label>
+            <input
+              id="reg-email"
+              v-model="form.email"
+              type="email"
+              required
+              autocomplete="email"
+              placeholder="john@example.com"
+              class="input w-full"
+            >
+          </div>
+
+          <div class="form-group">
+            <label class="label" for="reg-password">Password</label>
+            <div class="relative">
+              <input
+                id="reg-password"
+                v-model="form.password"
+                :type="showPassword ? 'text' : 'password'"
+                required
+                autocomplete="new-password"
+                placeholder="At least 6 characters"
+                class="input w-full pr-10"
+              >
+              <button
+                type="button"
+                class="absolute right-3 top-1/2 -translate-y-1/2 text-muted hover:text-secondary transition-colors"
+                :aria-label="showPassword ? 'Hide password' : 'Show password'"
+                @click="showPassword = !showPassword"
+              >
+                <SidebarIcon :icon="showPassword ? 'eye-off' : 'eye'" />
+              </button>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label class="label" for="reg-phone">Phone <span class="text-muted">(optional)</span></label>
+            <input
+              id="reg-phone"
+              v-model="form.phone"
+              type="tel"
+              autocomplete="tel"
+              placeholder="+1 555 000 0000"
+              class="input w-full"
+            >
+          </div>
+
+          <button
+            type="submit"
+            class="btn-primary w-full"
+            :disabled="!isValid || loading"
           >
-        </div>
+            <span
+              v-if="loading"
+              class="w-4 h-4 border-2 border-obsidian-950/40 border-t-obsidian-950 rounded-full animate-spin"
+            />
+            <span>{{ loading ? 'Creating account…' : 'Create account' }}</span>
+          </button>
+        </form>
 
-        <button
-          type="submit"
-          class="btn-primary w-full"
-          :disabled="!isValid || loading"
-        >
-          <span
-            v-if="loading"
-            class="w-4 h-4 border-2 border-obsidian-950/40 border-t-obsidian-950 rounded-full animate-spin"
-          />
-          <span>{{ loading ? 'Creating account…' : 'Create account' }}</span>
-        </button>
-      </form>
-
-      <!-- Link back to login. -->
-      <p class="text-center text-sm text-muted mt-6">
-        Already have an account?
-        <NuxtLink to="/login" class="text-gold-400 hover:underline ml-1">Sign in</NuxtLink>
-      </p>
+        <p class="text-center text-sm text-muted mt-6">
+          Already have an account?
+          <NuxtLink to="/login" class="text-gold-400 hover:underline ml-1">Sign in</NuxtLink>
+        </p>
+      </template>
     </div>
   </div>
 </template>

@@ -130,5 +130,10 @@ export function useAuth() {
   // The subject (user ID) from the decoded JWT, or null if not authenticated.
   const userId = computed(() => state.value.userId)
 
-  return { login, loginWithGoogle, logout, isLoggedIn, isAdmin, userEmail, userId }
+  // Hydrates auth state from an externally obtained token (e.g. registration response).
+  function setToken(token: string): void {
+    _hydrate(token)
+  }
+
+  return { login, loginWithGoogle, logout, setToken, isLoggedIn, isAdmin, userEmail, userId }
 }
