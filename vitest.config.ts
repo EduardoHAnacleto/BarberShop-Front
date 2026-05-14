@@ -9,7 +9,7 @@ export default defineVitestConfig({
     // The nuxt environment applies Nuxt's transforms and provides all
     // auto-imported composables as globals, matching the runtime behaviour.
     environment: 'nuxt',
-    include: ['tests/unit/**/*.spec.ts'],
+    include: ['tests/unit/**/*.spec.ts', 'tests/integration/**/*.spec.ts'],
     // Reset mocks automatically between each test to prevent cross-test
     // pollution from module-level singletons (e.g. useToast's ref array).
     clearMocks: true,

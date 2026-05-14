@@ -24,7 +24,15 @@ Update this section after closing each sprint sub-task so future sessions can pi
 
 **Sprint 1 — COMPLETE**
 
-Sprints 2–8 not started.
+**Sprint 2 — Pinia Stores + Admin Pages (appointments & workers)**
+- [x] **S2.1 Pinia Stores** — `stores/appointments.ts` (fetchAll, create, update, remove, delayMany, cancelMany, subscribeRealtime, computed: scheduled/todayItems/byStatus), `stores/workers.ts` (fetchAll, create, update, remove, subscribeRealtime). Also created `stores/customers.ts` and `stores/services.ts` early (needed by appointments modal selects). All stores follow the same shape: items/loading/error, boolean returns, toast messages from API verbatim. `delayMany` converts minutes to `HH:MM:00` timespan string. Commit: `feat(s2.1)`.
+- [x] **S2.2 Page /admin/appointments** — Full appointments management page: filter bar (text + status + worker + date), table with `StatusBadge` component, batch select (allSelected computed + toggleAll/toggleRow), batch Delay + Cancel actions, single Create/Edit/Cancel modals. `components/appointments/StatusBadge.vue` with per-status classes. Commit: `feat(s2.2)`.
+- [x] **S2.3 Page /admin/workers** — Workers page with coloured-initial avatar, service tags (max 3 + "+N" overflow badge), service multi-select checkboxes in modal, client-side validation (name ≥ 10 chars, wage > 0, email required). Commit: `feat(s2.3)`.
+- [x] **S2.5 Sprint 2 Tests** — Unit: `stores/appointments.store.spec.ts` (11 tests), `stores/workers.store.spec.ts` (4 tests). Integration: `appointments.integration.spec.ts` (4 tests via MSW + component mount; mock `useSignalR` to prevent real hub connections). E2E: `appointments.spec.ts` (7 scenarios), `workers.spec.ts` (4 scenarios). Added integration glob to vitest include. Fixed bare `tsc` → `vue-tsc` in CLAUDE.md. 48/48 unit+integration pass, lint 0, vue-tsc 0. Commit: `feat(s2.5)`.
+
+**Sprint 2 — COMPLETE**
+
+Sprints 3–8 not started.
 
 ## Stack (locked by the plan — do not substitute)
 
@@ -41,7 +49,7 @@ npm run dev              # nuxt dev
 npm run build            # nuxt build
 npm run preview          # nuxt preview
 npm run lint             # eslint .
-npx tsc --noEmit         # type-check
+npx vue-tsc --noEmit     # type-check (must use vue-tsc, not bare tsc — bare tsc cannot resolve .vue files)
 npm run test:unit        # vitest run
 npm run test:unit:watch  # vitest
 npm run test:e2e         # playwright test
