@@ -19,6 +19,7 @@
     "@nuxtjs/color-mode": "^3.0.0",
     "@nuxtjs/tailwindcss": "^6.0.0",
     "@pinia/nuxt": "~0.10.0",
+    "@sentry/nuxt": "^10.53.1",
     "@vite-pwa/nuxt": "^0.10.0",
     "@vueuse/nuxt": "^13.0.0",
     "axios": "^1.0.0",

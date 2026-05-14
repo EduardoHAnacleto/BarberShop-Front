@@ -1,0 +1,97 @@
+name: Frontend CI
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main]
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: '22', cache: 'npm' }
+      - run: npm ci
+      - run: npm run lint
+      - run: npx vue-tsc --noEmit
+
+  unit-tests:
+    runs-on: ubuntu-latest
+    needs: lint
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: '22', cache: 'npm' }
+      - run: npm ci
+      - run: npm run test:unit -- --reporter=verbose --coverage
+      - uses: actions/upload-artifact@v4
+        with: { name: unit-coverage, path: coverage/ }
+
+  build:
+    runs-on: ubuntu-latest
+    needs: lint
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: '22', cache: 'npm' }
+      - run: npm ci
+      - run: npm run build
+        env:
+          NUXT_PUBLIC_API_BASE: http://localhost:8080
+          NUXT_PUBLIC_GOOGLE_CLIENT_ID: ''
+
+  e2e:
+    runs-on: ubuntu-latest
+    needs: [unit-tests, build]
+    services:
+      api:
+        image: eduardohanacleto/barbershop-api:1.0.0
+        ports: ['8080:8080']
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: '22', cache: 'npm' }
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+      - run: npm run build
+        env:
+          NUXT_PUBLIC_API_BASE: http://localhost:8080
+          NUXT_PUBLIC_GOOGLE_CLIENT_ID: ''
+      - run: npm run preview &
+      - run: npx wait-on http://localhost:3000
+      - run: npm run test:e2e
+        env:
+          BASE_URL: http://localhost:3000
+          API_URL: http://localhost:8080
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with: { name: playwright-report, path: playwright-report/ }
+
+  lighthouse:
+    runs-on: ubuntu-latest
+    needs: build
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: '22', cache: 'npm' }
+      - run: npm ci
+      - run: npm run build
+        env:
+          NUXT_PUBLIC_API_BASE: http://localhost:8080
+          NUXT_PUBLIC_GOOGLE_CLIENT_ID: ''
+      - run: npm run preview &
+      - run: npx wait-on http://localhost:3000
+      - run: npx lhci autorun
+        env:
+          LHCI_GITHUB_APP_TOKEN: ${{ secrets.LHCI_GITHUB_APP_TOKEN }}
+
+  deploy:
+    runs-on: ubuntu-latest
+    needs: [e2e, lighthouse]
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    steps:
+      - uses: actions/checkout@v4
+      - name: Deploy to production
+        run: echo "Deploy step — configure according to infrastructure (SSH, Kubernetes, etc.)"

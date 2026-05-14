@@ -150,7 +150,7 @@ services:
         NUXT_PUBLIC_GOOGLE_CLIENT_ID: "${NUXT_PUBLIC_GOOGLE_CLIENT_ID:-}"
     container_name: barbershop-staging-frontend
     ports:
-      - "3001:3001"
+      - "3001:3000"
     environment:
       - NODE_ENV=production
       - NUXT_PUBLIC_API_BASE=http://api:8080

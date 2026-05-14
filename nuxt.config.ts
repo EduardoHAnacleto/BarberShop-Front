@@ -22,6 +22,7 @@ export default defineNuxtConfig({
     '@nuxtjs/color-mode',
     '@vite-pwa/nuxt',
     '@nuxt/eslint',
+    '@sentry/nuxt/module',
   ],
 
   // Force dark theme: no class suffix, dark preference, dark fallback.
@@ -95,6 +96,14 @@ export default defineNuxtConfig({
   // TypeScript strict mode is mandatory per the Sprint 1 DoD.
   typescript: {
     strict: true,
+  },
+
+  // ── Sentry (S8.4) ──────────────────────────────────────────────────────────
+  // Build-time Sentry module options. Runtime config (DSN, integrations) lives
+  // in sentry.client.config.ts which is auto-loaded by @sentry/nuxt/module.
+  sentry: {
+    // Source map upload is disabled until a Sentry org/project is configured.
+    // Set SENTRY_AUTH_TOKEN + sourceMapsUploadOptions to enable.
   },
 
   // ── PWA (S6.1) ─────────────────────────────────────────────────────────────

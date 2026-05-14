@@ -75,7 +75,13 @@ Update this section after closing each sprint sub-task so future sessions can pi
 
 **Sprint 7 — COMPLETE**
 
-Sprint 8 not started.
+**Sprint 8 — CI/CD & Production**
+- [x] **S8.1 Dockerfile & Docker Compose** — Updated `Dockerfile` to S8.1 spec: port 3000, `HEALTHCHECK wget`, `npm ci --frozen-lockfile`, renamed stages to `build`/`runtime`. `docker-compose.staging.yml` updated to map `3001:3000`. New `docker-compose.yml` (production): frontend + api + sqlserver + redis + nginx; nginx on port 80/443. `nginx/nginx.conf`: upstream blocks for frontend:3000 and api:8080, SignalR WebSocket upgrade headers for all 5 hubs. Commit: `feat(s8)`.
+- [x] **S8.2 CI/CD** — `.github/workflows/frontend-ci.yml`: 5 jobs (`lint` → `unit-tests`+`build` → `e2e`+`lighthouse` → `deploy`). `deploy` only on push to `main` after all jobs pass. `.lighthouserc.json`: minScore 0.9 Performance/SEO/Best-Practices, 0.85 Accessibility, on `/` and `/book`. Commit: `feat(s8)`.
+- [x] **S8.3 Smoke tests** — `tests/e2e/smoke.spec.ts`: 5 tests (landing title, API health, login endpoint reachable, admin redirect, SignalR indicator emerald). Reads `API_URL`, `ADMIN_EMAIL`, `ADMIN_PASSWORD` from env. Commit: `feat(s8)`.
+- [x] **S8.4 Monitoring** — `@sentry/nuxt` installed. `sentry.client.config.ts` with `Sentry.init()` (DSN from `SENTRY_DSN` env, 20% trace sample in prod, replay integration). `sentry` module block in `nuxt.config.ts`. `public/robots.txt` (allow `/`, disallow `/admin`). `public/sitemap.xml` (static, `/` + `/book`). `README.md` (dev, test, build, docker, env vars, architecture). `SENTRY_DSN` documented in `.env.example`. Commit: `feat(s8)`.
+
+**Sprint 8 — COMPLETE**
 
 ## Stack (locked by the plan — do not substitute)
 
