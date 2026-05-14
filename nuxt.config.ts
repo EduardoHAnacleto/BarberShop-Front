@@ -58,6 +58,11 @@ export default defineNuxtConfig({
             target: 'http://localhost:8080',
             changeOrigin: true,
           },
+          // Users endpoints live at /users on the backend (no /api prefix).
+          '/users': {
+            target: 'http://localhost:8080',
+            changeOrigin: true,
+          },
           '/appointmentsHub': {
             target: 'http://localhost:8080',
             ws: true,

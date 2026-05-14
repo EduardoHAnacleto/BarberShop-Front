@@ -32,7 +32,16 @@ Update this section after closing each sprint sub-task so future sessions can pi
 
 **Sprint 2 — COMPLETE**
 
-Sprints 3–8 not started.
+**Sprint 3 — Admin CRUD: customers, services, users, schedule**
+- [x] **S3.1 Stores: users + schedule** — `stores/users.ts` (CRUD + extra `unlock(userId)` → `POST /api/auth/unlock/{id}`), `stores/schedule.ts` (schedules + closures + `checkIsOpen(dateTime)` with `false` safe-default on API error). Added `/users` to Vite dev proxy (backend route is `/users` without `/api` prefix). Commit: `feat(s3.1)`.
+- [x] **S3.2 Pages /admin/customers + /admin/services** — Customers page: name + email search, modal with name/email/phone/DOB, name-required validation, DOB formatted as `MMM DD, YYYY`. Services page: name + description search, modal with name (min 3 chars) + description textarea + duration (>0) + price (>0), description truncated to 60 chars in the table. Commit: `feat(s3.2)`.
+- [x] **S3.3 Page /admin/users** — Email search + role filter dropdown. Table columns: Email / Role badge (Admin=gold, User=blue, Client=gray) / Status (Active=green, Inactive=red) / Created / Lockout indicator / Actions. **Unlock button** (shield icon, emerald) only renders when `lockoutEnd > now`. Modal hides Password field on edit; backend AutoMapper hashes plain password into BCrypt server-side. Commit: `feat(s3.3)`.
+- [x] **S3.4 Page /admin/schedule** — Two sections in one page. Section 1: weekly hours table sorted by `dayOfWeek` (Sun→Sat), one row per day with per-row Save button and `opacity-50 pointer-events-none` on time inputs when `isOpen=false`. Times converted between HTML `HH:mm` ↔ TimeSpan `HH:mm:00`. Section 2: closures list with Add modal (radio for UntilNextOpening/UntilSpecificDate, datetime-local inputs, required reason). Commit: `feat(s3.4)`.
+- [x] **S3.5 Sprint 3 Tests** — Unit: `stores/users.store.spec.ts` (5), `stores/schedule.store.spec.ts` (8 — including `checkIsOpen` returning false on error), `stores/customers.store.spec.ts` (4), `stores/services.store.spec.ts` (3). E2E: `customers.spec.ts` (3), `services.spec.ts` (4 — including the min-3-chars validation block), `users.spec.ts` (3 — admin role badge), `schedule.spec.ts` (3 — toggle Monday persists across reload). DoD verified: `npm run test:unit` **68/68**, lint 0, vue-tsc 0, build OK. Commit: `feat(s3.5)`. Note: backend `UserRequestDTO.PasswordHash` accepts plain text; the AutoMapper config hashes it on the server before persistence.
+
+**Sprint 3 — COMPLETE**
+
+Sprints 4–8 not started.
 
 ## Stack (locked by the plan — do not substitute)
 
