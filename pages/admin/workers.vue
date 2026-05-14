@@ -95,7 +95,10 @@ function toggleService(id: number): void {
 async function saveWorker(): Promise<void> {
   if (!formValid.value) return
   saving.value = true
-  const body: Partial<Worker> = { ...form }
+  // Empty-string dates break the .NET DateTime deserializer with a 400, so
+  // omit dateOfBirth entirely when the user did not fill it.
+  const { dateOfBirth, ...rest } = form
+  const body: Partial<Worker> = dateOfBirth ? { ...rest, dateOfBirth } : rest
   const ok = editing.value
     ? await workersStore.update(editing.value.id, body)
     : await workersStore.create(body)

@@ -76,7 +76,9 @@ test.describe('workers page', () => {
     const workerName = await firstNameEl.textContent()
 
     await page.locator('button[aria-label="Remove worker"]').first().click()
-    await expect(page.locator('text=Remove worker')).toBeVisible()
+    // Match the dialog heading rather than free text — the body also contains
+    // the phrase "Remove worker" (e.g. "Remove Alice from the team?").
+    await expect(page.locator('h2:has-text("Remove worker")')).toBeVisible()
     await page.click('button:has-text("Remove")')
 
     await expect(page.locator('.toast').first()).toBeVisible()
