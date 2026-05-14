@@ -34,8 +34,8 @@ watchEffect(async () => {
         <span class="font-display text-lg text-primary">BarberShop</span>
       </NuxtLink>
 
-      <!-- Page anchor links + conditional Admin CTA. -->
-      <nav class="flex items-center gap-5 sm:gap-6">
+      <!-- Page anchor links + auth CTAs. -->
+      <nav class="flex items-center gap-4 sm:gap-5">
         <a href="#services" class="text-sm text-secondary hover:text-primary transition-colors">
           Services
         </a>
@@ -45,18 +45,32 @@ watchEffect(async () => {
         <NuxtLink to="/book" class="text-sm text-secondary hover:text-primary transition-colors">
           Book
         </NuxtLink>
-        <!-- My Account: shown for any logged-in user. -->
-        <NuxtLink v-if="isLoggedIn" to="/my" class="text-sm text-secondary hover:text-primary transition-colors">
-          My Account
-        </NuxtLink>
-        <!-- My Schedule: only for users with a linked worker profile. -->
-        <NuxtLink v-if="isWorker" to="/worker" class="text-sm text-secondary hover:text-primary transition-colors">
-          My Schedule
-        </NuxtLink>
-        <!-- Admin shortcut: only for admin-role users. -->
-        <NuxtLink v-if="isAdmin" to="/admin" class="btn-ghost text-sm py-1 px-3">
-          Admin
-        </NuxtLink>
+
+        <!-- Logged-in links. -->
+        <template v-if="isLoggedIn">
+          <NuxtLink to="/my" class="text-sm text-secondary hover:text-primary transition-colors">
+            My Account
+          </NuxtLink>
+          <NuxtLink v-if="isWorker" to="/worker" class="text-sm text-secondary hover:text-primary transition-colors">
+            My Schedule
+          </NuxtLink>
+          <NuxtLink v-if="isAdmin" to="/admin" class="btn-ghost text-sm py-1 px-3">
+            Admin
+          </NuxtLink>
+        </template>
+
+        <!-- Guest links: client and staff entry points. -->
+        <template v-else>
+          <NuxtLink to="/register" class="text-sm text-secondary hover:text-primary transition-colors">
+            Register
+          </NuxtLink>
+          <NuxtLink to="/login" class="text-sm text-secondary hover:text-primary transition-colors">
+            Sign In
+          </NuxtLink>
+          <NuxtLink to="/staff-login" class="btn-ghost text-sm py-1 px-3">
+            Staff Login
+          </NuxtLink>
+        </template>
       </nav>
     </div>
   </header>

@@ -93,8 +93,8 @@ onMounted(() => {
         >
           <span class="font-display font-bold text-gold-400 text-2xl">B</span>
         </div>
-        <h1 class="font-display text-2xl text-primary">BarberShop</h1>
-        <p class="text-secondary text-sm mt-1">Sign in to your account</p>
+        <h1 class="font-display text-2xl text-primary">Client Sign In</h1>
+        <p class="text-secondary text-sm mt-1">Access your booking and profile</p>
       </div>
 
       <!-- Email / password form. -->
@@ -150,10 +150,14 @@ onMounted(() => {
         </button>
       </form>
 
-      <!-- Link to registration for new visitors. -->
+      <!-- Links for clients: register or switch to staff login. -->
       <p class="text-center text-sm text-muted mt-5">
         Don't have an account?
-        <NuxtLink to="/register" class="text-gold-400 hover:underline ml-1">Create one</NuxtLink>
+        <NuxtLink to="/register" class="text-gold-400 hover:underline ml-1">Register</NuxtLink>
+      </p>
+      <p class="text-center text-sm text-muted mt-2">
+        Are you staff?
+        <NuxtLink to="/staff-login" class="text-gold-400 hover:underline ml-1">Staff Login</NuxtLink>
       </p>
 
       <!-- Divider and Google sign-in are hidden when no client ID is configured. -->
