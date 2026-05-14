@@ -11,6 +11,9 @@ export default defineNuxtConfig({
   // Axios 1.x imports form-data on the server which is not available in this project.
   ssr: false,
 
+  // Port 3000 is occupied by Grafana in the local dev environment.
+  devServer: { port: 3001 },
+
   // First-party modules required by Sprint 1 onward.
   modules: [
     '@nuxtjs/tailwindcss',

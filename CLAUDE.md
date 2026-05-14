@@ -45,7 +45,7 @@ Exact versions for every dependency are pinned in section S1.1 of the sprint pla
 Scripts defined in S8.2 of the plan; once `package.json` exists these are the canonical entry points:
 
 ```bash
-npm run dev              # nuxt dev
+npm run dev              # nuxt dev  →  http://localhost:3001  (port 3000 = Grafana)
 npm run build            # nuxt build
 npm run preview          # nuxt preview
 npm run lint             # eslint .
