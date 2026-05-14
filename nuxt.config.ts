@@ -43,52 +43,14 @@ export default defineNuxtConfig({
   },
 
   // Development-only overrides applied by Nuxt when NODE_ENV=development.
-  // Injects the local API base and adds a Vite dev-proxy so all /api/* and
-  // hub WebSocket requests are forwarded to the backend without CORS issues.
+  // Frontend connects directly to the backend at localhost:8080. The backend
+  // CORS policy whitelists localhost:3000/3001 with AllowCredentials so both
+  // authenticated XHR (Axios) and SignalR WebSocket upgrades work without a
+  // proxy. (The Vite WS proxy is too fragile for SignalR's reconnect cycle.)
   $development: {
     runtimeConfig: {
       public: {
         apiBase: 'http://localhost:8080',
-      },
-    },
-    vite: {
-      server: {
-        proxy: {
-          '/api': {
-            target: 'http://localhost:8080',
-            changeOrigin: true,
-          },
-          // Users endpoints live at /users on the backend (no /api prefix).
-          '/users': {
-            target: 'http://localhost:8080',
-            changeOrigin: true,
-          },
-          '/appointmentsHub': {
-            target: 'http://localhost:8080',
-            ws: true,
-            changeOrigin: true,
-          },
-          '/workersHub': {
-            target: 'http://localhost:8080',
-            ws: true,
-            changeOrigin: true,
-          },
-          '/customersHub': {
-            target: 'http://localhost:8080',
-            ws: true,
-            changeOrigin: true,
-          },
-          '/servicesHub': {
-            target: 'http://localhost:8080',
-            ws: true,
-            changeOrigin: true,
-          },
-          '/usersHub': {
-            target: 'http://localhost:8080',
-            ws: true,
-            changeOrigin: true,
-          },
-        },
       },
     },
   },

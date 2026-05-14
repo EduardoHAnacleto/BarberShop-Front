@@ -58,7 +58,9 @@ test.describe('services page', () => {
 
   test('deletes a service via the trash icon', async ({ page }) => {
     await page.locator('button[aria-label="Remove service"]').first().click()
-    await expect(page.locator('text=Remove service')).toBeVisible()
+    // Match the dialog heading rather than free text — the body also contains
+    // the phrase "Remove service" (e.g. "Remove Service 123?").
+    await expect(page.locator('h2:has-text("Remove service")')).toBeVisible()
     await page.click('button:has-text("Remove")')
 
     await expect(page.locator('.toast').first()).toBeVisible()
