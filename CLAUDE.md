@@ -41,7 +41,14 @@ Update this section after closing each sprint sub-task so future sessions can pi
 
 **Sprint 3 — COMPLETE**
 
-Sprints 4–8 not started.
+**Sprint 4 — SignalR realtime + Admin Dashboard**
+- [x] **S4.1 SignalR realtime polish** — `composables/useSignalR.ts`: extracted `subscribeWithReconnect(hub, event, cb)` helper and rewrote every typed shortcut (`onAppointmentsChanged`, `onWorkersChanged`, etc.) to subscribe to **both** the `XChanged` event AND the synthetic `reconnected` event. Result: every store that calls `signalr.onXChanged(fetchAll)` auto-refreshes on reconnect for free. The live/reconnecting indicator was already wired in `layouts/admin.vue` from S1.5. Commit: `feat(s4.1)`.
+- [x] **S4.2 Dashboard /admin** — `pages/admin/index.vue` (replaces the old placeholder): shop Open/Closed badge, 5 KPI cards (Today/Scheduled/OnGoing/Workers/Customers) with skeleton loading, two charts and two tables. Charts: `components/dashboard/AppointmentsByDayChart.vue` (stacked Bar across last 7 days by status) and `components/dashboard/ServiceDistributionChart.vue` (Doughnut grouped by service). Aggregation helpers extracted into `utils/dashboardAggregations.ts` (`groupByDayAndStatus`, `groupByService`, `lastNDays`) so charts stay presentational. `plugins/chartjs.client.ts` registers the Chart.js controllers/scales/plugins client-side. Charts wrapped in `<ClientOnly>` to avoid SSR rendering issues. Commit: `feat(s4.2)`. Note: backend ASP.NET `JsonSerializer` errors on empty-string `DateTime` fields — workers/customers pages now strip empty `dateOfBirth` from the POST body.
+- [x] **S4.4 Sprint 4 tests** — Unit: `tests/unit/utils/dashboardAggregations.spec.ts` (8 tests covering grouping + day-range), `tests/unit/stores/subscribeRealtime.spec.ts` (3 tests verifying the change+reconnect subscription model and that the composite unsubscribe tears down both). Integration: `tests/integration/adminLayout.integration.spec.ts` (mount calls `connect()` 5 times, unmount calls `disconnectAll()`). DoD verified: `npm run test:unit` **81/81**, lint 0, vue-tsc 0. Commit: `feat(s4.4)`. Gotcha: with `restoreMocks: true` in vitest.config, hoisted `vi.fn().mockResolvedValue(...)` loses its implementation between tests; reapply in `beforeEach`. dayjs default formatter is local-TZ, so day-string tests must use local-time ISO inputs (no trailing `Z`) to stay stable across runners.
+
+**Sprint 4 — COMPLETE**
+
+Sprints 5–8 not started.
 
 ## Stack (locked by the plan — do not substitute)
 

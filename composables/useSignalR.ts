@@ -128,19 +128,41 @@ export function useSignalR() {
     }
   }
 
+  // Subscribes to a hub's change event AND its reconnect event. The same
+  // callback fires for both: store consumers typically want to refetch when
+  // the server pushes a change OR when the connection comes back after a
+  // drop (data may have changed during the disconnect window).
+  function subscribeWithReconnect(
+    hub: HubName,
+    event: string,
+    callback: () => void,
+  ): () => void {
+    const unsubChange = on(hub, event, callback)
+    const unsubReconnect = on(hub, 'reconnected', callback)
+    return () => {
+      unsubChange()
+      unsubReconnect()
+    }
+  }
+
   // ── Typed event shortcuts ────────────────────────────────────────────────
-  // Each shortcut wires the canonical event name for that hub.
+  // Each shortcut wires the canonical event name for that hub and auto-fires
+  // the callback on reconnect via subscribeWithReconnect.
 
   const onAppointmentsChanged = (cb: () => void) =>
-    on('appointments', 'AppointmentsChanged', cb)
+    subscribeWithReconnect('appointments', 'AppointmentsChanged', cb)
 
-  const onWorkersChanged = (cb: () => void) => on('workers', 'WorkersChanged', cb)
+  const onWorkersChanged = (cb: () => void) =>
+    subscribeWithReconnect('workers', 'WorkersChanged', cb)
 
-  const onCustomersChanged = (cb: () => void) => on('customers', 'CustomersChanged', cb)
+  const onCustomersChanged = (cb: () => void) =>
+    subscribeWithReconnect('customers', 'CustomersChanged', cb)
 
-  const onServicesChanged = (cb: () => void) => on('services', 'ServicesChanged', cb)
+  const onServicesChanged = (cb: () => void) =>
+    subscribeWithReconnect('services', 'ServicesChanged', cb)
 
-  const onUsersChanged = (cb: () => void) => on('users', 'UsersChanged', cb)
+  const onUsersChanged = (cb: () => void) =>
+    subscribeWithReconnect('users', 'UsersChanged', cb)
 
   return {
     connect,
