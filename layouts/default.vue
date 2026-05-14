@@ -4,10 +4,9 @@
 </script>
 
 <template>
-  <!-- Single root element required by the template linter.
-       ToastContainer uses Teleport internally so it renders to <body> regardless. -->
   <div class="min-h-screen bg-[var(--bg)]">
     <slot />
+    <!-- ToastContainer uses Teleport internally so it renders to <body> regardless. -->
     <UiToastContainer />
   </div>
 </template>

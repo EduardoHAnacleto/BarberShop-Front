@@ -70,6 +70,16 @@ function isActive(to: string): boolean {
       </NuxtLink>
     </nav>
 
+    <!-- View Site shortcut — navigates back to the public landing page. -->
+    <div class="border-t border-subtle px-2 py-3">
+      <NuxtLink to="/" class="sidebar-link">
+        <SidebarIcon icon="home" class="flex-shrink-0" />
+        <Transition name="fade-text">
+          <span v-if="!collapsed" class="truncate">View Site</span>
+        </Transition>
+      </NuxtLink>
+    </div>
+
     <!-- Footer: email, collapse button, logout button. -->
     <div class="border-t border-subtle px-2 py-3 space-y-1">
       <!-- User email (hidden when collapsed to save space). -->

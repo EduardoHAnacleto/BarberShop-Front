@@ -152,5 +152,11 @@ defineProps<{
       <path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19" />
       <line x1="1" y1="1" x2="23" y2="23" />
     </template>
+
+    <!-- home: house outline; used for the "View Site" link. -->
+    <template v-else-if="icon === 'home'">
+      <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
+      <polyline points="9 22 9 12 15 12 15 22" />
+    </template>
   </svg>
 </template>
