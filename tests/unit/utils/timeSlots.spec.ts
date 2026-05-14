@@ -1,6 +1,7 @@
-// Unit tests for utils/timeSlots.ts — generateTimeSlots().
+// Unit tests for utils/timeSlots.ts — generateTimeSlots() and filterAvailableSlots().
 import { describe, it, expect } from 'vitest'
-import { generateTimeSlots } from '~/utils/timeSlots'
+import { generateTimeSlots, filterAvailableSlots } from '~/utils/timeSlots'
+import type { OccupiedPeriod } from '~/utils/timeSlots'
 
 describe('generateTimeSlots()', () => {
   it('generates slots from open to close at the given interval', () => {
@@ -40,5 +41,58 @@ describe('generateTimeSlots()', () => {
     const withNull = generateTimeSlots('09:00', '11:00', null, '10:00', 30)
     const withoutBreak = generateTimeSlots('09:00', '11:00', null, null, 30)
     expect(withNull).toEqual(withoutBreak)
+  })
+})
+
+describe('filterAvailableSlots()', () => {
+  // Helper: 9:00–17:30 every 30 min = 17 slots (no break).
+  const baseSlots = generateTimeSlots('09:00', '18:00', null, null, 30)
+
+  it('returns all slots unchanged when there are no occupied periods', () => {
+    expect(filterAvailableSlots(baseSlots, [], 30)).toEqual(baseSlots)
+  })
+
+  it('blocks the slot that exactly matches an existing appointment start', () => {
+    // Appointment at 15:00 for 30 min → blocks 15:00 only (slot at 15:30 is free).
+    const occupied: OccupiedPeriod[] = [{ startMinutes: 15 * 60, endMinutes: 15 * 60 + 30 }]
+    const available = filterAvailableSlots(baseSlots, occupied, 30)
+    expect(available).not.toContain('15:00')
+    expect(available).toContain('15:30')
+  })
+
+  it('blocks slots that would still be running during an existing appointment', () => {
+    // Existing appointment at 15:00 for 105 min (1h45m) → ends at 16:45.
+    // Slots at 15:00, 15:30, 16:00, 16:30 all overlap; 17:00 is free.
+    const occupied: OccupiedPeriod[] = [{ startMinutes: 15 * 60, endMinutes: 15 * 60 + 105 }]
+    const available = filterAvailableSlots(baseSlots, occupied, 30)
+    expect(available).not.toContain('15:00')
+    expect(available).not.toContain('15:30')
+    expect(available).not.toContain('16:00')
+    expect(available).not.toContain('16:30')
+    expect(available).toContain('17:00')
+  })
+
+  it('blocks a slot whose proposed duration would overlap an existing appointment', () => {
+    // Existing appointment at 16:00 for 30 min.
+    // Proposed service takes 90 min — booking at 15:00 (runs 15:00–16:30) overlaps.
+    const occupied: OccupiedPeriod[] = [{ startMinutes: 16 * 60, endMinutes: 16 * 60 + 30 }]
+    const available = filterAvailableSlots(baseSlots, occupied, 90)
+    expect(available).not.toContain('15:00') // 15:00–16:30 overlaps 16:00–16:30
+    expect(available).not.toContain('15:30') // 15:30–17:00 overlaps 16:00–16:30
+    expect(available).toContain('14:30')     // 14:30–16:00 does not overlap
+  })
+
+  it('handles multiple occupied periods simultaneously', () => {
+    // Two appointments: 10:00–10:30 and 14:00–15:00.
+    const occupied: OccupiedPeriod[] = [
+      { startMinutes: 10 * 60, endMinutes: 10 * 60 + 30 },
+      { startMinutes: 14 * 60, endMinutes: 15 * 60 },
+    ]
+    const available = filterAvailableSlots(baseSlots, occupied, 30)
+    expect(available).not.toContain('10:00')
+    expect(available).not.toContain('14:00')
+    expect(available).not.toContain('14:30')
+    expect(available).toContain('10:30')
+    expect(available).toContain('15:00')
   })
 })
