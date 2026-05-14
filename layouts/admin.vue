@@ -9,9 +9,10 @@ const { connect, disconnectAll, isConnected } = useSignalR()
 const HUBS = ['appointments', 'workers', 'customers', 'services', 'users'] as const
 
 // Connect all five hubs in parallel on mount so real-time updates are active
-// from the moment the first admin page loads.
+// from the moment the first admin page loads. Errors are caught per-hub so
+// one failed connection does not prevent the rest from starting.
 onMounted(async () => {
-  await Promise.all(HUBS.map((hub) => connect(hub)))
+  await Promise.all(HUBS.map((hub) => connect(hub).catch(() => {})))
 })
 
 // Disconnect all hubs when navigating away from the admin section to free

@@ -29,12 +29,59 @@ export default defineNuxtConfig({
     fallback: 'dark',
   },
 
-  // Public runtime config — values are read at runtime from NUXT_PUBLIC_* env
-  // vars. The keys here are the contract that composables/useApi consumes.
+  // Public runtime config. With ssr:false the NUXT_PUBLIC_* env vars are not
+  // applied per-request, so we default to empty and use $development below to
+  // supply the local API URL. Production deploys override via env vars at build.
   runtimeConfig: {
     public: {
       apiBase: '',
       googleClientId: '',
+    },
+  },
+
+  // Development-only overrides applied by Nuxt when NODE_ENV=development.
+  // Injects the local API base and adds a Vite dev-proxy so all /api/* and
+  // hub WebSocket requests are forwarded to the backend without CORS issues.
+  $development: {
+    runtimeConfig: {
+      public: {
+        apiBase: 'http://localhost:8080',
+      },
+    },
+    vite: {
+      server: {
+        proxy: {
+          '/api': {
+            target: 'http://localhost:8080',
+            changeOrigin: true,
+          },
+          '/appointmentsHub': {
+            target: 'http://localhost:8080',
+            ws: true,
+            changeOrigin: true,
+          },
+          '/workersHub': {
+            target: 'http://localhost:8080',
+            ws: true,
+            changeOrigin: true,
+          },
+          '/customersHub': {
+            target: 'http://localhost:8080',
+            ws: true,
+            changeOrigin: true,
+          },
+          '/servicesHub': {
+            target: 'http://localhost:8080',
+            ws: true,
+            changeOrigin: true,
+          },
+          '/usersHub': {
+            target: 'http://localhost:8080',
+            ws: true,
+            changeOrigin: true,
+          },
+        },
+      },
     },
   },
 
