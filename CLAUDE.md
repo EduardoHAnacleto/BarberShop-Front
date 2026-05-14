@@ -48,7 +48,14 @@ Update this section after closing each sprint sub-task so future sessions can pi
 
 **Sprint 4 — COMPLETE**
 
-Sprints 5–8 not started.
+**Sprint 5 — Client Portal**
+- [x] **S5.1 Landing Page `/`** — `pages/index.vue` (replaces placeholder): hero section with gold gradient + radial background, `components/schedule/IsOpenBanner.vue` (polls `api.schedule.isOpen()` every 5 min, shows Open/Closed badge + time), services grid (fetch on mount, cards with name/description/duration/price, "Book this service" → `/book?serviceId={id}`), team grid (workers with initial avatar, position, up to 3 service tags), footer. `components/layout/PublicNavbar.vue` (sticky, backdrop-blur, logo, anchor links for #services and #team, Admin button when `isLoggedIn`). Commit: `feat(s5)`.
+- [x] **S5.2 Booking Flow `/book`** — `pages/book/index.vue` (3-step stepper, reads `?serviceId` to pre-select). `components/BookingStepper.vue` (horizontal progress bar: check for completed, gold for active, gray for future). Step sub-components: `components/booking/StepService.vue` (selectable service cards), `components/booking/StepWorkerTime.vue` (worker cards → date picker → schedule fetch → time slot grid or closed-day message), `components/booking/StepConfirm.vue` (booking summary + customer form, email validation). Submit flow: POST `/api/customers` → POST `/api/appointments` → navigate to `/book/success?appointmentId={id}`. `pages/book/success.vue` (checkmark, "Booking Confirmed!", appointment reference, two CTAs). `utils/timeSlots.ts` — `generateTimeSlots(openTime, closeTime, breakStart, breakEnd, interval)` pure function.
+- [x] **S5.3 Sprint 5 Tests** — Unit: `tests/unit/utils/timeSlots.spec.ts` (6 tests for slot generation, break exclusion, edge cases), `tests/unit/components/IsOpenBanner.spec.ts` (4 tests: open state, closed state, skeleton while loading, interval cleanup on unmount), `tests/unit/components/BookingStepper.spec.ts` (4 tests: bubble count, checkmark for completed, gold for active, gray for future). E2E: `tests/e2e/booking.spec.ts` (full flow, serviceId pre-selection, closed-day message, email validation). DoD verified: `npm run test:unit` **95/95**, lint 0, vue-tsc 0, build OK. Commit: `feat(s5)`.
+
+**Sprint 5 — COMPLETE**
+
+Sprints 6–8 not started.
 
 ## Stack (locked by the plan — do not substitute)
 
