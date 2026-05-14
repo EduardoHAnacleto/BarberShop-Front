@@ -6,6 +6,7 @@
 ![TypeScript](https://img.shields.io/badge/TypeScript-strict-3178C6?logo=typescript)
 ![Docker](https://img.shields.io/badge/Docker-ready-2496ED?logo=docker)
 ![PWA](https://img.shields.io/badge/PWA-enabled-5A0FC8)
+[![Docker Hub](https://img.shields.io/docker/v/eduardohanacleto/barbershop-full?label=Docker%20Hub&logo=docker)](https://hub.docker.com/r/eduardohanacleto/barbershop-full)
 
 Full-stack frontend for the [BarberShop API](https://github.com/EduardoHAnacleto/BarberShop), built with **Nuxt 3** and **TypeScript**. Delivers a public booking portal, a real-time admin dashboard, and a customer/worker self-service portal — all in a single Nuxt application with a dark-themed design system.
 
@@ -52,6 +53,8 @@ Full-stack frontend for the [BarberShop API](https://github.com/EduardoHAnacleto
 ### Docker (recommended)
 
 > **Requires:** [Docker Desktop](https://www.docker.com/products/docker-desktop/)
+>
+> The API image [`eduardohanacleto/barbershop-full:1.0.0`](https://hub.docker.com/r/eduardohanacleto/barbershop-full) is published on Docker Hub — no local API build needed.
 
 ```bash
 # 1. Clone
@@ -60,7 +63,8 @@ cd BarberShop-Front
 
 # 2. Configure environment
 cp .env.example .env
-# Edit .env — set SA_PASSWORD, JWT_KEY, API_IMAGE
+# Edit .env — set SA_PASSWORD and JWT_KEY
+# API_IMAGE defaults to eduardohanacleto/barbershop-full:1.0.0 (no change needed)
 
 # 3. Start everything (frontend + API + SQL Server + Redis + Nginx)
 docker compose up -d
@@ -197,7 +201,7 @@ npm run test:all         # unit + E2E
 | `SENTRY_DSN`               | No       | Sentry DSN — leave blank to disable error monitoring  |
 | `SA_PASSWORD`              | Docker   | SQL Server SA password                                |
 | `JWT_KEY`                  | Docker   | JWT signing key (≥ 32 chars)                          |
-| `API_IMAGE`                | Docker   | Docker Hub image for the API service                  |
+| `API_IMAGE`                | Docker   | Docker Hub image for the API service (default: `eduardohanacleto/barbershop-full:1.0.0`) |
 
 ---
 

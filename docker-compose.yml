@@ -91,7 +91,7 @@ services:
 
   # ── API ──────────────────────────────────────────────────────────────────────
   api:
-    image: "${API_IMAGE:-eduardohanacleto/barbershop-api:latest}"
+    image: "${API_IMAGE:-eduardohanacleto/barbershop-full:1.0.0}"
     container_name: barbershop-api
     environment:
       - ASPNETCORE_ENVIRONMENT=Production
