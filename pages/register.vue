@@ -185,6 +185,9 @@ async function handleRegister(): Promise<void> {
           Already have an account?
           <NuxtLink to="/login" class="text-gold-400 hover:underline ml-1">Sign in</NuxtLink>
         </p>
+        <p class="text-center text-sm text-muted mt-2">
+          <NuxtLink to="/" class="text-secondary hover:text-primary transition-colors">← Back to home</NuxtLink>
+        </p>
       </template>
     </div>
   </div>
