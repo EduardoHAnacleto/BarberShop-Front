@@ -5,6 +5,9 @@ import dayjs from 'dayjs'
 
 const { connect, disconnectAll, isConnected } = useSignalR()
 
+// Mobile drawer state — passed to AdminSidebar as v-model:mobileOpen.
+const sidebarOpen = ref(false)
+
 // Hub names that must be connected while any admin page is mounted.
 const HUBS = ['appointments', 'workers', 'customers', 'services', 'users'] as const
 
@@ -39,14 +42,26 @@ onUnmounted(() => {
 <template>
   <!-- Side-by-side layout: fixed-width sidebar on the left, flex-column main on the right. -->
   <div class="flex min-h-screen">
-    <LayoutAdminSidebar />
+    <LayoutAdminSidebar v-model:mobile-open="sidebarOpen" />
 
     <!-- Main content column: sticky header + scrollable page area. -->
     <div class="flex flex-col flex-1 min-w-0">
-      <!-- Sticky header: SignalR status indicator and current date. -->
+      <!-- Sticky header: hamburger (mobile), SignalR indicator, current date. -->
       <header
-        class="h-14 flex items-center justify-between px-6 sticky top-0 z-10 bg-surface border-b border-subtle"
+        class="h-14 flex items-center justify-between px-4 md:px-6 sticky top-0 z-10 bg-surface border-b border-subtle"
       >
+        <!-- Hamburger button — only visible on mobile to open the sidebar drawer. -->
+        <button
+          data-testid="hamburger-btn"
+          class="md:hidden p-2 -ml-2 text-muted hover:text-primary transition-colors"
+          aria-label="Open menu"
+          @click="sidebarOpen = true"
+        >
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <path d="M4 6h16M4 12h16M4 18h16" />
+          </svg>
+        </button>
+
         <!-- SignalR live / reconnecting indicator. -->
         <div
           data-testid="signalr-indicator"

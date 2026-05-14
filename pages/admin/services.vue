@@ -181,23 +181,23 @@ onUnmounted(() => {
       <table class="table">
         <thead>
           <tr>
-            <th>
+            <th scope="col">
               <button type="button" class="flex items-center gap-1.5 hover:text-primary transition-colors" @click="toggleSort('name')">
                 Name <UiSortIcon :active="sortKey === 'name'" :dir="sortDir" />
               </button>
             </th>
-            <th>Description</th>
-            <th>
+            <th scope="col">Description</th>
+            <th scope="col">
               <button type="button" class="flex items-center gap-1.5 hover:text-primary transition-colors" @click="toggleSort('duration')">
                 Duration <UiSortIcon :active="sortKey === 'duration'" :dir="sortDir" />
               </button>
             </th>
-            <th>
+            <th scope="col">
               <button type="button" class="flex items-center gap-1.5 hover:text-primary transition-colors" @click="toggleSort('price')">
                 Price <UiSortIcon :active="sortKey === 'price'" :dir="sortDir" />
               </button>
             </th>
-            <th class="w-20">Actions</th>
+            <th scope="col" class="w-20">Actions</th>
           </tr>
         </thead>
         <tbody>

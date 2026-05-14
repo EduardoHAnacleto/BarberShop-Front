@@ -195,11 +195,11 @@ onUnmounted(() => {
         <table v-else class="table">
           <thead>
             <tr>
-              <th class="w-20">Time</th>
-              <th>Customer</th>
-              <th>Worker</th>
-              <th>Service</th>
-              <th class="w-28">Status</th>
+              <th scope="col" class="w-20">Time</th>
+              <th scope="col">Customer</th>
+              <th scope="col">Worker</th>
+              <th scope="col">Service</th>
+              <th scope="col" class="w-28">Status</th>
             </tr>
           </thead>
           <tbody>
@@ -225,10 +225,10 @@ onUnmounted(() => {
         <table v-else class="table">
           <thead>
             <tr>
-              <th>Customer</th>
-              <th>Service</th>
-              <th>Date</th>
-              <th class="w-28">Status</th>
+              <th scope="col">Customer</th>
+              <th scope="col">Service</th>
+              <th scope="col">Date</th>
+              <th scope="col" class="w-28">Status</th>
             </tr>
           </thead>
           <tbody>

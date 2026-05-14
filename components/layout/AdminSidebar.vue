@@ -1,11 +1,20 @@
 <script setup lang="ts">
 // Collapsible admin navigation sidebar. Renders the main nav links with active
 // state detection and a footer with user info, collapse toggle, and logout.
+// On mobile (<md) the sidebar is a slide-in drawer toggled via mobileOpen prop.
 const route = useRoute()
 const { userEmail, logout } = useAuth()
 
-// Whether the sidebar is in its narrow (icon-only) state.
+// Whether the sidebar is in its narrow (icon-only) state (desktop only).
 const collapsed = ref(false)
+
+// Mobile drawer open state — controlled by the parent layout.
+const props = defineProps<{ mobileOpen?: boolean }>()
+const emit = defineEmits<{ 'update:mobileOpen': [value: boolean] }>()
+
+function closeMobile(): void {
+  emit('update:mobileOpen', false)
+}
 
 // Navigation items as defined by the sprint plan S1.5.
 const nav = [
@@ -28,13 +37,29 @@ function isActive(to: string): boolean {
 </script>
 
 <template>
-  <!-- Sidebar container. Width transitions between expanded (w-60) and
-       collapsed (w-16) to show icon-only navigation. -->
+  <!-- Mobile overlay backdrop — visible only when the drawer is open. -->
+  <div
+    v-if="props.mobileOpen"
+    class="fixed inset-0 z-40 bg-obsidian-950/70 md:hidden"
+    aria-hidden="true"
+    @click="closeMobile"
+  />
+
+  <!-- Sidebar container.
+       Mobile: fixed drawer (z-50), visible only when mobileOpen.
+       Desktop: sticky column, width toggles between w-60 and w-16. -->
   <aside
-    class="relative flex flex-col h-screen bg-surface border-r transition-all duration-300 flex-shrink-0"
-    :class="collapsed ? 'w-16' : 'w-60'"
+    data-testid="admin-sidebar"
+    class="fixed inset-y-0 left-0 z-50 flex flex-col h-screen bg-surface border-r
+           transition-all duration-300 flex-shrink-0
+           md:relative md:z-auto"
+    :class="[
+      collapsed ? 'md:w-16' : 'md:w-60',
+      props.mobileOpen ? 'w-60 translate-x-0' : '-translate-x-full md:translate-x-0',
+    ]"
   >
-    <!-- Logo area: "B" monogram + "BarberShop" label (hidden when collapsed). -->
+    <!-- Logo area: "B" monogram + "BarberShop" label (hidden when collapsed).
+         On mobile a close (×) button appears at the end of the row. -->
     <div class="flex items-center gap-3 px-3 py-4 border-b border-subtle">
       <div
         class="w-8 h-8 rounded-lg bg-gold-500/20 border border-gold-500/30 flex items-center
@@ -43,11 +68,22 @@ function isActive(to: string): boolean {
         <span class="font-display font-bold text-gold-400 text-sm">B</span>
       </div>
       <Transition name="fade-text">
-        <div v-if="!collapsed" class="overflow-hidden">
+        <div v-if="!collapsed" class="overflow-hidden flex-1">
           <p class="font-display font-semibold text-primary text-sm leading-tight">BarberShop</p>
           <p class="text-muted text-xs font-mono">Admin</p>
         </div>
       </Transition>
+      <!-- Close button — only shown on mobile when drawer is open. -->
+      <button
+        v-if="props.mobileOpen"
+        class="md:hidden ml-auto p-1 text-muted hover:text-primary transition-colors"
+        aria-label="Close menu"
+        @click="closeMobile"
+      >
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+          <path d="M6 18L18 6M6 6l12 12" />
+        </svg>
+      </button>
     </div>
 
     <!-- Navigation links. -->

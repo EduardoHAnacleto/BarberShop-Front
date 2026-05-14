@@ -67,7 +67,15 @@ Update this section after closing each sprint sub-task so future sessions can pi
 
 **Sprint 6 — COMPLETE**
 
-Sprints 7–8 not started.
+**Sprint 7 — QA & Staging**
+- [x] **S7.1 Staging environment** — `Dockerfile` (multi-stage node:22-alpine builder + runner, exposes port 3001). `docker-compose.staging.yml` (frontend + api + sqlserver + redis, no observability; `sqlserver-init` seeds tables + admin user). `.env.staging` (gitignored; documents required vars: `API_IMAGE`, `SA_PASSWORD`, `JWT_KEY`, `NUXT_PUBLIC_GOOGLE_CLIENT_ID`). Updated `.gitignore` to exclude `.env.staging`. Commit: `feat(s7)`.
+- [x] **S7.3 Accessibility tests** — `tests/e2e/a11y.spec.ts` uses `@axe-core/playwright` with `wcag2a/wcag2aa/wcag21a/wcag21aa` tags. Tests `/login`, `/` (landing), `/book` (step 1), `/admin`, `/admin/appointments`, `/admin/workers`, `/admin/schedule`. Helper `checkA11y()` filters to `critical` + `serious` violations only and throws a readable report. Commit: `feat(s7)`.
+- [x] **S7.4 Cross-browser config** — `playwright.config.ts` updated with 5 projects: `chromium` (Desktop Chrome), `firefox` (Desktop Firefox), `webkit` (Desktop Safari), `mobile-chrome` (Pixel 5), `mobile-safari` (iPhone 13). Commit: `feat(s7)`.
+- [x] **S7.5 Responsive tests** — `tests/e2e/responsive.spec.ts` checks 4 viewports: `375px` (sidebar off-screen, hamburger visible, table scroll wrapper, no overflow), `768px` (hamburger hidden, sidebar on-screen), `1280px` (sidebar w-60 ≥ 200px, 5 KPI cards visible, no overflow), `1920px` (no overflow on dashboard + appointments + landing). Commit: `feat(s7)`.
+
+**Sprint 7 — COMPLETE**
+
+Sprint 8 not started.
 
 ## Stack (locked by the plan — do not substitute)
 

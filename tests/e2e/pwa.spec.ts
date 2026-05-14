@@ -57,7 +57,7 @@ test('landing page is accessible offline after first visit', async ({ page, cont
 })
 
 // ── Test 3: API cache via service worker ──────────────────────────────────────
-test('/api/services/all is served by the service worker on second visit', async ({ page, context }) => {
+test('/api/services/all is served by the service worker on second visit', async ({ page, context: _context }) => {
   // First visit: populate the SW cache.
   await page.goto('/')
   await page.waitForLoadState('networkidle')

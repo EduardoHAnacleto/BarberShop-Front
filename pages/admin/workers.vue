@@ -210,29 +210,29 @@ onUnmounted(() => {
       <table class="table">
         <thead>
           <tr>
-            <th class="w-12">Avatar</th>
-            <th>
+            <th scope="col" class="w-12">Avatar</th>
+            <th scope="col">
               <button type="button" class="flex items-center gap-1.5 hover:text-primary transition-colors" @click="toggleSort('name')">
                 Name <UiSortIcon :active="sortKey === 'name'" :dir="sortDir" />
               </button>
             </th>
-            <th>
+            <th scope="col">
               <button type="button" class="flex items-center gap-1.5 hover:text-primary transition-colors" @click="toggleSort('position')">
                 Position <UiSortIcon :active="sortKey === 'position'" :dir="sortDir" />
               </button>
             </th>
-            <th>Phone</th>
-            <th>
+            <th scope="col">Phone</th>
+            <th scope="col">
               <button type="button" class="flex items-center gap-1.5 hover:text-primary transition-colors" @click="toggleSort('wage')">
                 Wage/h <UiSortIcon :active="sortKey === 'wage'" :dir="sortDir" />
               </button>
             </th>
-            <th>
+            <th scope="col">
               <button type="button" class="flex items-center gap-1.5 hover:text-primary transition-colors" @click="toggleSort('services')">
                 Services <UiSortIcon :active="sortKey === 'services'" :dir="sortDir" />
               </button>
             </th>
-            <th class="w-20">Actions</th>
+            <th scope="col" class="w-20">Actions</th>
           </tr>
         </thead>
         <tbody>

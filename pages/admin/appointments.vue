@@ -335,7 +335,7 @@ onUnmounted(() => {
         <thead>
           <tr>
             <!-- Select-all checkbox -->
-            <th class="w-10">
+            <th scope="col" class="w-10">
               <input
                 type="checkbox"
                 :checked="allSelected"
@@ -344,32 +344,32 @@ onUnmounted(() => {
                 @change="toggleAll"
               >
             </th>
-            <th>
+            <th scope="col">
               <button type="button" class="flex items-center gap-1.5 hover:text-primary transition-colors" @click="toggleSort('customer')">
                 Customer <UiSortIcon :active="sortKey === 'customer'" :dir="sortDir" />
               </button>
             </th>
-            <th>
+            <th scope="col">
               <button type="button" class="flex items-center gap-1.5 hover:text-primary transition-colors" @click="toggleSort('worker')">
                 Worker <UiSortIcon :active="sortKey === 'worker'" :dir="sortDir" />
               </button>
             </th>
-            <th>
+            <th scope="col">
               <button type="button" class="flex items-center gap-1.5 hover:text-primary transition-colors" @click="toggleSort('service')">
                 Service <UiSortIcon :active="sortKey === 'service'" :dir="sortDir" />
               </button>
             </th>
-            <th>
+            <th scope="col">
               <button type="button" class="flex items-center gap-1.5 hover:text-primary transition-colors" @click="toggleSort('scheduled')">
                 Scheduled <UiSortIcon :active="sortKey === 'scheduled'" :dir="sortDir" />
               </button>
             </th>
-            <th>
+            <th scope="col">
               <button type="button" class="flex items-center gap-1.5 hover:text-primary transition-colors" @click="toggleSort('status')">
                 Status <UiSortIcon :active="sortKey === 'status'" :dir="sortDir" />
               </button>
             </th>
-            <th class="w-20">Actions</th>
+            <th scope="col" class="w-20">Actions</th>
           </tr>
         </thead>
         <tbody>
