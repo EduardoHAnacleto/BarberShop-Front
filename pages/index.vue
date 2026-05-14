@@ -5,17 +5,33 @@ import type { Service, Worker } from '~/types'
 
 definePageMeta({ layout: 'default' })
 
-const { api } = useApi()
+const { public: { apiBase } } = useRuntimeConfig()
 
-// ── Services ─────────────────────────────────────────────────────────────────
+// ── Services — cached with useLazyFetch (S6.2) ──────────────────────────────
+// getCachedData re-uses Nuxt payload on back-navigation; avoids re-fetching
+// within the same session.
+const {
+  data: servicesData,
+  pending: servicesLoading,
+} = useLazyFetch<Service[]>(`${apiBase}/api/services/all`, {
+  key: 'landing-services',
+  getCachedData: (key, nuxtApp) => (nuxtApp.payload.data[key] as Service[] | undefined),
+  default: () => [] as Service[],
+})
 
-const services = ref<Service[]>([])
-const servicesLoading = ref(true)
+const services = computed(() => servicesData.value ?? [])
 
-// ── Team ─────────────────────────────────────────────────────────────────────
+// ── Team — cached with useLazyFetch (S6.2) ──────────────────────────────────
+const {
+  data: workersData,
+  pending: workersLoading,
+} = useLazyFetch<Worker[]>(`${apiBase}/api/workers/all`, {
+  key: 'landing-workers',
+  getCachedData: (key, nuxtApp) => (nuxtApp.payload.data[key] as Worker[] | undefined),
+  default: () => [] as Worker[],
+})
 
-const workers = ref<Worker[]>([])
-const workersLoading = ref(true)
+const workers = computed(() => workersData.value ?? [])
 
 // ── Display helpers ───────────────────────────────────────────────────────────
 
@@ -31,27 +47,6 @@ function formatDuration(minutes: number): string {
   const m = minutes % 60
   return m > 0 ? `${h}h ${m}min` : `${h}h`
 }
-
-// ── Lifecycle ─────────────────────────────────────────────────────────────────
-
-onMounted(async () => {
-  // Fetch services and workers concurrently; each has its own error boundary.
-  try {
-    services.value = await api.services.all()
-  } catch {
-    // Silent fail — empty-state message is shown below.
-  } finally {
-    servicesLoading.value = false
-  }
-
-  try {
-    workers.value = await api.workers.all()
-  } catch {
-    // Silent fail — empty-state message is shown below.
-  } finally {
-    workersLoading.value = false
-  }
-})
 </script>
 
 <template>

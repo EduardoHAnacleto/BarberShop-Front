@@ -4,6 +4,8 @@
 </script>
 
 <template>
+  <!-- Service-worker update banner — rendered above every page. -->
+  <UiUpdatePrompt />
   <!-- NuxtLayout wraps the active page in the layout selected by the route. -->
   <NuxtLayout>
     <NuxtPage />

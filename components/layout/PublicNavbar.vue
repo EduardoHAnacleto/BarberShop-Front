@@ -54,7 +54,8 @@ watchEffect(async () => {
           <NuxtLink v-if="isWorker" to="/worker" class="text-sm text-secondary hover:text-primary transition-colors">
             My Schedule
           </NuxtLink>
-          <NuxtLink v-if="isAdmin" to="/admin" class="text-sm text-secondary hover:text-primary transition-colors">
+          <!-- prefetch loads the admin chunk in the background when this link is in view. -->
+          <NuxtLink v-if="isAdmin" to="/admin" prefetch class="text-sm text-secondary hover:text-primary transition-colors">
             Admin
           </NuxtLink>
           <!-- User email + logout. -->

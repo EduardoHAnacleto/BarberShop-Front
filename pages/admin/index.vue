@@ -4,6 +4,14 @@
 import dayjs from 'dayjs'
 import type { Appointment } from '~/types'
 
+// Async-loaded chart components so Chart.js is not in the initial bundle.
+const DashboardAppointmentsByDayChart = defineAsyncComponent(
+  () => import('~/components/dashboard/AppointmentsByDayChart.vue'),
+)
+const DashboardServiceDistributionChart = defineAsyncComponent(
+  () => import('~/components/dashboard/ServiceDistributionChart.vue'),
+)
+
 definePageMeta({ layout: 'admin', middleware: 'admin' })
 
 // ── Stores ─────────────────────────────────────────────────────────────────
@@ -149,10 +157,24 @@ onUnmounted(() => {
       </div>
     </div>
 
-    <!-- Charts row -->
+    <!-- Charts row — loaded asynchronously so Chart.js splits into its own chunk. -->
     <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
-      <DashboardAppointmentsByDayChart :appointments="appointments" />
-      <DashboardServiceDistributionChart :appointments="appointments" />
+      <Suspense>
+        <template #default>
+          <DashboardAppointmentsByDayChart :appointments="appointments" />
+        </template>
+        <template #fallback>
+          <div class="card"><UiSkeleton height="h-64" /></div>
+        </template>
+      </Suspense>
+      <Suspense>
+        <template #default>
+          <DashboardServiceDistributionChart :appointments="appointments" />
+        </template>
+        <template #fallback>
+          <div class="card"><UiSkeleton height="h-64" /></div>
+        </template>
+      </Suspense>
     </div>
 
     <!-- Tables row -->

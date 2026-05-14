@@ -96,4 +96,69 @@ export default defineNuxtConfig({
   typescript: {
     strict: true,
   },
+
+  // ── PWA (S6.1) ─────────────────────────────────────────────────────────────
+  // Registers a service worker with auto-update strategy and workbox runtime
+  // caching rules aligned with the sprint spec.
+  pwa: {
+    registerType: 'autoUpdate',
+    manifest: {
+      name: 'BarberShop',
+      short_name: 'BarberShop',
+      description: 'Premium barbershop management & booking',
+      start_url: '/',
+      display: 'standalone',
+      background_color: '#0a0a0a',
+      theme_color: '#0a0a0a',
+      icons: [
+        { src: '/icon-192.png', sizes: '192x192', type: 'image/png' },
+        { src: '/icon-512.png', sizes: '512x512', type: 'image/png' },
+        { src: '/icon-512.png', sizes: '512x512', type: 'image/png', purpose: 'maskable' },
+      ],
+    },
+    workbox: {
+      // Strategy for Google Fonts: cache-first, 1-year TTL.
+      runtimeCaching: [
+        {
+          urlPattern: /^https:\/\/fonts\.(googleapis|gstatic)\.com\/.*/i,
+          handler: 'CacheFirst',
+          options: {
+            cacheName: 'google-fonts',
+            expiration: { maxAgeSeconds: 60 * 60 * 24 * 365 },
+          },
+        },
+        // Strategy for static images: cache-first, 50 entries max.
+        {
+          urlPattern: /\.(?:png|jpg|jpeg|svg|gif|webp|ico)$/i,
+          handler: 'CacheFirst',
+          options: {
+            cacheName: 'images',
+            expiration: { maxEntries: 50, maxAgeSeconds: 60 * 60 * 24 * 30 },
+          },
+        },
+        // Services and workers lists: stale-while-revalidate, 5-minute TTL.
+        {
+          urlPattern: /\/api\/(services|workers)\/all/i,
+          handler: 'StaleWhileRevalidate',
+          options: {
+            cacheName: 'api-static',
+            expiration: { maxAgeSeconds: 60 * 5 },
+          },
+        },
+        // Business schedule: always prefer fresh data from network.
+        {
+          urlPattern: /\/api\/working-hours\/.*/i,
+          handler: 'NetworkFirst',
+          options: { cacheName: 'api-schedule' },
+        },
+      ],
+    },
+    // Expose useRegisterSW() composable for the UiUpdatePrompt component.
+    client: { installPrompt: true },
+    devOptions: {
+      // Enable PWA in development so the service worker can be inspected.
+      enabled: true,
+      type: 'module',
+    },
+  },
 })
