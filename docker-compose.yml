@@ -110,10 +110,11 @@ services:
       sqlserver-init:
         condition: service_completed_successfully
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
-      interval: 30s
-      timeout: 10s
-      retries: 5
+      # ASP.NET image has no curl/wget — use bash TCP check on port 8080.
+      test: ["CMD-SHELL", "bash -c '</dev/tcp/localhost/8080' 2>/dev/null && echo OK || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
       start_period: 20s
     restart: unless-stopped
 
