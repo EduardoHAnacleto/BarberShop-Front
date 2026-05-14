@@ -29,6 +29,42 @@ const filtered = computed(() => {
   )
 })
 
+// ── Sort state ─────────────────────────────────────────────────────────────
+
+type WorkerSortKey = 'name' | 'position' | 'wage' | 'services'
+
+const sortKey = ref<WorkerSortKey>('name')
+const sortDir = ref<'asc' | 'desc'>('asc')
+
+function toggleSort(key: WorkerSortKey): void {
+  if (sortKey.value === key) sortDir.value = sortDir.value === 'asc' ? 'desc' : 'asc'
+  else { sortKey.value = key; sortDir.value = 'asc' }
+}
+
+const sorted = computed(() => {
+  const d = sortDir.value === 'asc' ? 1 : -1
+  return [...filtered.value].sort((a, b) => {
+    switch (sortKey.value) {
+      case 'name':     return d * a.name.localeCompare(b.name)
+      case 'position': return d * a.position.localeCompare(b.position)
+      case 'wage':     return d * (a.wagePerHour - b.wagePerHour)
+      case 'services': return d * (a.providedServices.length - b.providedServices.length)
+      default:         return 0
+    }
+  })
+})
+
+// ── Pagination ─────────────────────────────────────────────────────────────
+
+const pageSize = ref(20)
+
+// Reset to first page whenever filter or sort changes.
+watch([searchQuery, sortKey, sortDir], () => { pageSize.value = 20 })
+
+const paginated = computed(() => sorted.value.slice(0, pageSize.value))
+
+function loadMore(): void { pageSize.value += 20 }
+
 // ── Create / Edit modal ────────────────────────────────────────────────────
 
 const showModal = ref(false)
@@ -78,7 +114,7 @@ function openEdit(w: Worker): void {
     position: w.position,
     wagePerHour: w.wagePerHour,
     dateOfBirth: w.dateOfBirth?.slice(0, 10) ?? '',
-    servicesId: [...w.servicesId],
+    servicesId: w.providedServices.map((s) => s.id),
   })
   showModal.value = true
 }
@@ -168,17 +204,34 @@ onUnmounted(() => {
       </div>
     </div>
 
-    <!-- Workers table -->
+    <!-- Workers table + pagination footer -->
+    <div class="space-y-3">
     <div class="table-wrapper">
       <table class="table">
         <thead>
           <tr>
             <th class="w-12">Avatar</th>
-            <th>Name</th>
-            <th>Position</th>
+            <th>
+              <button type="button" class="flex items-center gap-1.5 hover:text-primary transition-colors" @click="toggleSort('name')">
+                Name <UiSortIcon :active="sortKey === 'name'" :dir="sortDir" />
+              </button>
+            </th>
+            <th>
+              <button type="button" class="flex items-center gap-1.5 hover:text-primary transition-colors" @click="toggleSort('position')">
+                Position <UiSortIcon :active="sortKey === 'position'" :dir="sortDir" />
+              </button>
+            </th>
             <th>Phone</th>
-            <th>Wage/h</th>
-            <th>Services</th>
+            <th>
+              <button type="button" class="flex items-center gap-1.5 hover:text-primary transition-colors" @click="toggleSort('wage')">
+                Wage/h <UiSortIcon :active="sortKey === 'wage'" :dir="sortDir" />
+              </button>
+            </th>
+            <th>
+              <button type="button" class="flex items-center gap-1.5 hover:text-primary transition-colors" @click="toggleSort('services')">
+                Services <UiSortIcon :active="sortKey === 'services'" :dir="sortDir" />
+              </button>
+            </th>
             <th class="w-20">Actions</th>
           </tr>
         </thead>
@@ -191,12 +244,12 @@ onUnmounted(() => {
           </template>
 
           <!-- Empty state -->
-          <tr v-else-if="filtered.length === 0">
+          <tr v-else-if="sorted.length === 0">
             <td colspan="7" class="text-center text-muted py-12">No workers found</td>
           </tr>
 
           <!-- Data rows -->
-          <tr v-for="w in filtered" v-else :key="w.id">
+          <tr v-for="w in paginated" v-else :key="w.id">
             <!-- Avatar: coloured circle with first initial -->
             <td>
               <div
@@ -243,6 +296,22 @@ onUnmounted(() => {
           </tr>
         </tbody>
       </table>
+    </div>
+
+    <!-- Pagination footer -->
+    <div v-if="sorted.length > 0" class="flex items-center justify-between px-1">
+      <span class="text-xs text-muted font-mono">
+        Showing {{ paginated.length }} of {{ sorted.length }}
+      </span>
+      <button
+        v-if="paginated.length < sorted.length"
+        type="button"
+        class="btn-ghost btn-sm"
+        @click="loadMore"
+      >
+        Show 20 more
+      </button>
+    </div>
     </div>
 
     <!-- Create / Edit modal -->

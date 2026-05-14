@@ -24,11 +24,17 @@ watchEffect(() => {
   }
 })
 
-// Submits the email/password form and shows a spinner while the request runs.
+// Submits the email/password form, navigates on success.
+// Explicit navigateTo (not watchEffect) ensures the route change happens after
+// _hydrate() has committed the auth state, preventing a blank reload on /my.
 async function handleLogin(): Promise<void> {
   loading.value = true
-  await login(form.email, form.password)
+  const success = await login(form.email, form.password)
   loading.value = false
+  if (success) {
+    const redirect = (route.query.redirect as string) || (isAdmin.value ? '/admin' : '/my')
+    await navigateTo(redirect)
+  }
 }
 
 // True when a Google OAuth client ID has been configured. When false, the

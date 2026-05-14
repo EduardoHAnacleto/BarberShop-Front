@@ -21,11 +21,15 @@ watchEffect(() => {
   navigateTo((route.query.redirect as string) || fallback)
 })
 
-// Submits the login form. The watchEffect above handles the post-login redirect.
+// Submits the login form and navigates on success.
+// Explicit navigateTo after login() so auth state is committed before route change.
 async function handleLogin(): Promise<void> {
   loading.value = true
-  await login(form.email, form.password)
+  const success = await login(form.email, form.password)
   loading.value = false
+  if (success) {
+    await navigateTo(isAdmin.value ? '/admin' : '/worker')
+  }
 }
 </script>
 

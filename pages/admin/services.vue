@@ -25,6 +25,41 @@ const filtered = computed(() => {
   )
 })
 
+// ── Sort state ─────────────────────────────────────────────────────────────
+
+type ServiceSortKey = 'name' | 'duration' | 'price'
+
+const sortKey = ref<ServiceSortKey>('name')
+const sortDir = ref<'asc' | 'desc'>('asc')
+
+function toggleSort(key: ServiceSortKey): void {
+  if (sortKey.value === key) sortDir.value = sortDir.value === 'asc' ? 'desc' : 'asc'
+  else { sortKey.value = key; sortDir.value = 'asc' }
+}
+
+const sorted = computed(() => {
+  const d = sortDir.value === 'asc' ? 1 : -1
+  return [...filtered.value].sort((a, b) => {
+    switch (sortKey.value) {
+      case 'name':     return d * a.name.localeCompare(b.name)
+      case 'duration': return d * (a.duration - b.duration)
+      case 'price':    return d * (a.price - b.price)
+      default:         return 0
+    }
+  })
+})
+
+// ── Pagination ─────────────────────────────────────────────────────────────
+
+const pageSize = ref(20)
+
+// Reset to first page whenever filter or sort changes.
+watch([searchQuery, sortKey, sortDir], () => { pageSize.value = 20 })
+
+const paginated = computed(() => sorted.value.slice(0, pageSize.value))
+
+function loadMore(): void { pageSize.value += 20 }
+
 // ── Create / Edit modal ────────────────────────────────────────────────────
 
 const showModal = ref(false)
@@ -140,15 +175,28 @@ onUnmounted(() => {
       </div>
     </div>
 
-    <!-- Services table -->
+    <!-- Services table + pagination footer -->
+    <div class="space-y-3">
     <div class="table-wrapper">
       <table class="table">
         <thead>
           <tr>
-            <th>Name</th>
+            <th>
+              <button type="button" class="flex items-center gap-1.5 hover:text-primary transition-colors" @click="toggleSort('name')">
+                Name <UiSortIcon :active="sortKey === 'name'" :dir="sortDir" />
+              </button>
+            </th>
             <th>Description</th>
-            <th>Duration</th>
-            <th>Price</th>
+            <th>
+              <button type="button" class="flex items-center gap-1.5 hover:text-primary transition-colors" @click="toggleSort('duration')">
+                Duration <UiSortIcon :active="sortKey === 'duration'" :dir="sortDir" />
+              </button>
+            </th>
+            <th>
+              <button type="button" class="flex items-center gap-1.5 hover:text-primary transition-colors" @click="toggleSort('price')">
+                Price <UiSortIcon :active="sortKey === 'price'" :dir="sortDir" />
+              </button>
+            </th>
             <th class="w-20">Actions</th>
           </tr>
         </thead>
@@ -159,11 +207,11 @@ onUnmounted(() => {
             </tr>
           </template>
 
-          <tr v-else-if="filtered.length === 0">
+          <tr v-else-if="sorted.length === 0">
             <td colspan="5" class="text-center text-muted py-12">No services found</td>
           </tr>
 
-          <tr v-for="s in filtered" v-else :key="s.id">
+          <tr v-for="s in paginated" v-else :key="s.id">
             <td class="font-medium text-primary">{{ s.name }}</td>
             <td class="text-secondary text-sm">{{ truncate(s.description, 60) }}</td>
             <td class="text-secondary font-mono text-sm">{{ s.duration }}min</td>
@@ -185,6 +233,22 @@ onUnmounted(() => {
           </tr>
         </tbody>
       </table>
+    </div>
+
+    <!-- Pagination footer -->
+    <div v-if="sorted.length > 0" class="flex items-center justify-between px-1">
+      <span class="text-xs text-muted font-mono">
+        Showing {{ paginated.length }} of {{ sorted.length }}
+      </span>
+      <button
+        v-if="paginated.length < sorted.length"
+        type="button"
+        class="btn-ghost btn-sm"
+        @click="loadMore"
+      >
+        Show 20 more
+      </button>
+    </div>
     </div>
 
     <!-- Create / Edit modal -->

@@ -55,8 +55,8 @@ async function handleRegister(): Promise<void> {
 
     registered.value = true
 
-    // Redirect to the landing page after 3 s so the user can read the confirmation.
-    setTimeout(() => navigateTo('/'), 3000)
+    // Redirect to My Account after 3 s so the user can read the confirmation.
+    setTimeout(() => navigateTo('/my'), 3000)
   } catch (err: unknown) {
     const raw = (err as { response?: { data?: unknown } }).response?.data
     const msg = typeof raw === 'string' ? raw : 'Registration failed. Please try again.'
@@ -91,7 +91,7 @@ async function handleRegister(): Promise<void> {
           Welcome, {{ form.name.split(' ')[0] }}!<br>
           Redirecting you to the home page…
         </p>
-        <NuxtLink to="/" class="btn-primary inline-block mt-2">Go now →</NuxtLink>
+        <NuxtLink to="/my" class="btn-primary inline-block mt-2">Go now →</NuxtLink>
       </div>
 
       <!-- ── Registration form ── -->

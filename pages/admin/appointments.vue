@@ -57,6 +57,33 @@ const filtered = computed(() => {
   })
 })
 
+// ── Sort state ─────────────────────────────────────────────────────────────
+
+type ApptSortKey = 'customer' | 'worker' | 'service' | 'scheduled' | 'status'
+
+const sortKey = ref<ApptSortKey>('scheduled')
+const sortDir = ref<'asc' | 'desc'>('asc')
+
+function toggleSort(key: ApptSortKey): void {
+  if (sortKey.value === key) sortDir.value = sortDir.value === 'asc' ? 'desc' : 'asc'
+  else { sortKey.value = key; sortDir.value = 'asc' }
+}
+
+// Sorted view applied on top of the filtered result.
+const sorted = computed(() => {
+  const d = sortDir.value === 'asc' ? 1 : -1
+  return [...filtered.value].sort((a, b) => {
+    switch (sortKey.value) {
+      case 'customer':  return d * a.customerName.localeCompare(b.customerName)
+      case 'worker':    return d * a.workerName.localeCompare(b.workerName)
+      case 'service':   return d * a.serviceName.localeCompare(b.serviceName)
+      case 'scheduled': return d * (new Date(a.scheduledFor).getTime() - new Date(b.scheduledFor).getTime())
+      case 'status':    return d * (a.status - b.status)
+      default:          return 0
+    }
+  })
+})
+
 // ── Batch selection ─────────────────────────────────────────────────────────
 
 // IDs of the currently selected rows.
@@ -202,6 +229,20 @@ async function confirmBatchCancel(): Promise<void> {
   }
 }
 
+// ── Modal select options ───────────────────────────────────────────────────
+
+const customerOptions = computed(() =>
+  customersStore.items.map((c) => ({ id: c.id, label: c.name })),
+)
+
+const workerOptions = computed(() =>
+  workersStore.items.map((w) => ({ id: w.id, label: w.name })),
+)
+
+const serviceOptions = computed(() =>
+  servicesStore.items.map((s) => ({ id: s.id, label: s.name })),
+)
+
 // ── Lifecycle ───────────────────────────────────────────────────────────────
 
 // Load all data in parallel on mount; subscribe to real-time updates.
@@ -303,11 +344,31 @@ onUnmounted(() => {
                 @change="toggleAll"
               >
             </th>
-            <th>Customer</th>
-            <th>Worker</th>
-            <th>Service</th>
-            <th>Scheduled</th>
-            <th>Status</th>
+            <th>
+              <button type="button" class="flex items-center gap-1.5 hover:text-primary transition-colors" @click="toggleSort('customer')">
+                Customer <UiSortIcon :active="sortKey === 'customer'" :dir="sortDir" />
+              </button>
+            </th>
+            <th>
+              <button type="button" class="flex items-center gap-1.5 hover:text-primary transition-colors" @click="toggleSort('worker')">
+                Worker <UiSortIcon :active="sortKey === 'worker'" :dir="sortDir" />
+              </button>
+            </th>
+            <th>
+              <button type="button" class="flex items-center gap-1.5 hover:text-primary transition-colors" @click="toggleSort('service')">
+                Service <UiSortIcon :active="sortKey === 'service'" :dir="sortDir" />
+              </button>
+            </th>
+            <th>
+              <button type="button" class="flex items-center gap-1.5 hover:text-primary transition-colors" @click="toggleSort('scheduled')">
+                Scheduled <UiSortIcon :active="sortKey === 'scheduled'" :dir="sortDir" />
+              </button>
+            </th>
+            <th>
+              <button type="button" class="flex items-center gap-1.5 hover:text-primary transition-colors" @click="toggleSort('status')">
+                Status <UiSortIcon :active="sortKey === 'status'" :dir="sortDir" />
+              </button>
+            </th>
             <th class="w-20">Actions</th>
           </tr>
         </thead>
@@ -320,12 +381,12 @@ onUnmounted(() => {
           </template>
 
           <!-- Empty state -->
-          <tr v-else-if="filtered.length === 0">
+          <tr v-else-if="sorted.length === 0">
             <td colspan="7" class="text-center text-muted py-12">No appointments found</td>
           </tr>
 
           <!-- Data rows -->
-          <tr v-for="a in filtered" v-else :key="a.id">
+          <tr v-for="a in sorted" v-else :key="a.id">
             <td>
               <input
                 type="checkbox"
@@ -357,31 +418,37 @@ onUnmounted(() => {
     <!-- Create / Edit modal -->
     <UiModal v-model="showModal" :title="editing ? 'Edit appointment' : 'New appointment'" size="md">
       <form class="space-y-4" @submit.prevent="saveAppointment">
-        <!-- Customer select -->
+        <!-- Customer searchable select -->
         <div class="form-group">
           <label class="label" for="appt-customer">Customer</label>
-          <select id="appt-customer" v-model="form.customerId" class="input" autocomplete="off" required>
-            <option :value="0" disabled>Select customer…</option>
-            <option v-for="c in customersStore.items" :key="c.id" :value="c.id">{{ c.name }}</option>
-          </select>
+          <UiSearchSelect
+            v-model="form.customerId"
+            :options="customerOptions"
+            placeholder="Select customer…"
+            input-id="appt-customer"
+          />
         </div>
 
-        <!-- Worker select -->
+        <!-- Worker searchable select -->
         <div class="form-group">
           <label class="label" for="appt-worker">Worker</label>
-          <select id="appt-worker" v-model="form.workerId" class="input" autocomplete="off" required>
-            <option :value="0" disabled>Select worker…</option>
-            <option v-for="w in workersStore.items" :key="w.id" :value="w.id">{{ w.name }}</option>
-          </select>
+          <UiSearchSelect
+            v-model="form.workerId"
+            :options="workerOptions"
+            placeholder="Select worker…"
+            input-id="appt-worker"
+          />
         </div>
 
-        <!-- Service select -->
+        <!-- Service searchable select -->
         <div class="form-group">
           <label class="label" for="appt-service">Service</label>
-          <select id="appt-service" v-model="form.serviceId" class="input" autocomplete="off" required>
-            <option :value="0" disabled>Select service…</option>
-            <option v-for="s in servicesStore.items" :key="s.id" :value="s.id">{{ s.name }}</option>
-          </select>
+          <UiSearchSelect
+            v-model="form.serviceId"
+            :options="serviceOptions"
+            placeholder="Select service…"
+            input-id="appt-service"
+          />
         </div>
 
         <!-- Date & time -->

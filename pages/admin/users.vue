@@ -30,6 +30,47 @@ const filtered = computed(() => {
   })
 })
 
+// ── Sort state ─────────────────────────────────────────────────────────────
+
+type UserSortKey = 'role' | 'status' | 'lockout'
+
+const sortKey = ref<UserSortKey>('role')
+const sortDir = ref<'asc' | 'desc'>('asc')
+
+function toggleSort(key: UserSortKey): void {
+  if (sortKey.value === key) sortDir.value = sortDir.value === 'asc' ? 'desc' : 'asc'
+  else { sortKey.value = key; sortDir.value = 'asc' }
+}
+
+const sorted = computed(() => {
+  const d = sortDir.value === 'asc' ? 1 : -1
+  return [...filtered.value].sort((a, b) => {
+    switch (sortKey.value) {
+      case 'role':   return d * (a.userRole - b.userRole)
+      case 'status': return d * ((a.isActive ? 1 : 0) - (b.isActive ? 1 : 0))
+      case 'lockout': {
+        // Null lockouts go last regardless of direction.
+        if (!a.lockoutEnd && !b.lockoutEnd) return 0
+        if (!a.lockoutEnd) return 1
+        if (!b.lockoutEnd) return -1
+        return d * (new Date(a.lockoutEnd).getTime() - new Date(b.lockoutEnd).getTime())
+      }
+      default: return 0
+    }
+  })
+})
+
+// ── Pagination ─────────────────────────────────────────────────────────────
+
+const pageSize = ref(20)
+
+// Reset to first page whenever filter or sort changes.
+watch([searchQuery, roleFilter, sortKey, sortDir], () => { pageSize.value = 20 })
+
+const paginated = computed(() => sorted.value.slice(0, pageSize.value))
+
+function loadMore(): void { pageSize.value += 20 }
+
 // ── Create / Edit modal ────────────────────────────────────────────────────
 
 const showModal = ref(false)
@@ -129,10 +170,24 @@ async function confirmDelete(): Promise<void> {
 
 // ── Unlock action ───────────────────────────────────────────────────────────
 
-// Calls the auth.unlock endpoint and refreshes the list on success.
-async function unlock(u: User): Promise<void> {
-  const ok = await usersStore.unlock(u.id)
-  if (ok) await usersStore.fetchAll()
+const showUnlockDialog = ref(false)
+const unlockTarget = ref<User | null>(null)
+
+// Opens the confirmation modal for the given locked user.
+function promptUnlock(u: User): void {
+  unlockTarget.value = u
+  showUnlockDialog.value = true
+}
+
+// Called after the admin confirms the modal — clears lockout and refreshes.
+async function confirmUnlock(): Promise<void> {
+  if (!unlockTarget.value) return
+  const ok = await usersStore.unlock(unlockTarget.value.id)
+  if (ok) {
+    showUnlockDialog.value = false
+    unlockTarget.value = null
+    await usersStore.fetchAll()
+  }
 }
 
 // Returns true when the user has an active lockout in the future.
@@ -209,16 +264,29 @@ onUnmounted(() => {
       </select>
     </div>
 
-    <!-- Users table -->
+    <!-- Users table + pagination footer -->
+    <div class="space-y-3">
     <div class="table-wrapper">
       <table class="table">
         <thead>
           <tr>
             <th>Email</th>
-            <th>Role</th>
-            <th>Status</th>
+            <th>
+              <button type="button" class="flex items-center gap-1.5 hover:text-primary transition-colors" @click="toggleSort('role')">
+                Role <UiSortIcon :active="sortKey === 'role'" :dir="sortDir" />
+              </button>
+            </th>
+            <th>
+              <button type="button" class="flex items-center gap-1.5 hover:text-primary transition-colors" @click="toggleSort('status')">
+                Status <UiSortIcon :active="sortKey === 'status'" :dir="sortDir" />
+              </button>
+            </th>
             <th>Created</th>
-            <th>Lockout</th>
+            <th>
+              <button type="button" class="flex items-center gap-1.5 hover:text-primary transition-colors" @click="toggleSort('lockout')">
+                Lockout <UiSortIcon :active="sortKey === 'lockout'" :dir="sortDir" />
+              </button>
+            </th>
             <th class="w-32">Actions</th>
           </tr>
         </thead>
@@ -229,11 +297,11 @@ onUnmounted(() => {
             </tr>
           </template>
 
-          <tr v-else-if="filtered.length === 0">
+          <tr v-else-if="sorted.length === 0">
             <td colspan="6" class="text-center text-muted py-12">No users found</td>
           </tr>
 
-          <tr v-for="u in filtered" v-else :key="u.id">
+          <tr v-for="u in paginated" v-else :key="u.id">
             <td class="font-medium text-primary">{{ u.email }}</td>
             <td>
               <span class="badge" :class="roleBadge(u.userRole).cls">{{ roleBadge(u.userRole).label }}</span>
@@ -255,9 +323,9 @@ onUnmounted(() => {
                 <button
                   v-if="isLocked(u)"
                   class="btn-icon btn-ghost text-emerald-400"
-                  aria-label="Unlock user"
-                  title="Unlock user"
-                  @click="unlock(u)"
+                  aria-label="Remove lockout"
+                  title="Remove lockout"
+                  @click="promptUnlock(u)"
                 >
                   <SidebarIcon icon="shield" class="w-4 h-4" />
                 </button>
@@ -276,6 +344,22 @@ onUnmounted(() => {
           </tr>
         </tbody>
       </table>
+    </div>
+
+    <!-- Pagination footer -->
+    <div v-if="sorted.length > 0" class="flex items-center justify-between px-1">
+      <span class="text-xs text-muted font-mono">
+        Showing {{ paginated.length }} of {{ sorted.length }}
+      </span>
+      <button
+        v-if="paginated.length < sorted.length"
+        type="button"
+        class="btn-ghost btn-sm"
+        @click="loadMore"
+      >
+        Show 20 more
+      </button>
+    </div>
     </div>
 
     <!-- Create / Edit modal -->
@@ -346,6 +430,18 @@ onUnmounted(() => {
       confirm-label="Remove"
       :dangerous="true"
       @confirm="confirmDelete"
+    />
+
+    <!-- Unlock / remove lockout confirmation -->
+    <UiConfirmDialog
+      v-model="showUnlockDialog"
+      title="Remove lockout"
+      :message="unlockTarget
+        ? `Remove the lockout on ${unlockTarget.email}? The account will be accessible immediately.`
+        : ''"
+      confirm-label="Remove lockout"
+      :dangerous="false"
+      @confirm="confirmUnlock"
     />
   </div>
 </template>

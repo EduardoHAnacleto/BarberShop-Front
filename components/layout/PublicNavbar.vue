@@ -1,7 +1,7 @@
 <script setup lang="ts">
 // Sticky public navigation bar with backdrop-blur.
 // Shows "My Account" for any logged-in user, "My Schedule" for workers, and "Admin" for admins.
-const { isLoggedIn, isAdmin, userId } = useAuth()
+const { isLoggedIn, isAdmin, userId, userEmail, logout } = useAuth()
 const { api } = useApi()
 
 // True when the logged-in user has a linked worker profile.
@@ -54,9 +54,27 @@ watchEffect(async () => {
           <NuxtLink v-if="isWorker" to="/worker" class="text-sm text-secondary hover:text-primary transition-colors">
             My Schedule
           </NuxtLink>
-          <NuxtLink v-if="isAdmin" to="/admin" class="btn-ghost text-sm py-1 px-3">
+          <NuxtLink v-if="isAdmin" to="/admin" class="text-sm text-secondary hover:text-primary transition-colors">
             Admin
           </NuxtLink>
+          <!-- User email + logout. -->
+          <div class="flex items-center gap-2 border-l border-border pl-4 ml-1">
+            <span class="hidden sm:block text-xs text-muted font-mono truncate max-w-[140px]">{{ userEmail }}</span>
+            <button
+              type="button"
+              class="btn-ghost text-sm py-1 px-3 flex items-center gap-1.5"
+              aria-label="Sign out"
+              @click="logout"
+            >
+              <!-- Logout icon. -->
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+                <polyline points="16 17 21 12 16 7" />
+                <line x1="21" y1="12" x2="9" y2="12" />
+              </svg>
+              Sign out
+            </button>
+          </div>
         </template>
 
         <!-- Guest links: client and staff entry points. -->
