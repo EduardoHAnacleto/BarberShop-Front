@@ -10,19 +10,20 @@ export default defineConfig({
   reporter: 'html',
 
   use: {
-    // Base URL for page.goto('/login') style navigation.
-    baseURL: process.env.BASE_URL ?? 'http://localhost:3000',
+    // Base URL for page.goto('/login') style navigation. Port 3001 because
+    // 3000 is occupied by Grafana in this developer's local environment.
+    baseURL: process.env.BASE_URL ?? 'http://localhost:3001',
     trace: 'on-first-retry',
     screenshot: 'only-on-failure',
   },
 
-  // Start the Nuxt preview server before running E2E tests when not already
-  // running. The build must have been completed beforehand via npm run build.
+  // Reuse the running dev server when present (typical local workflow);
+  // otherwise spin up the preview build for CI runs.
   webServer: {
-    command: 'npm run preview',
-    url: process.env.BASE_URL ?? 'http://localhost:3000',
+    command: 'npm run dev',
+    url: process.env.BASE_URL ?? 'http://localhost:3001',
     reuseExistingServer: !process.env.CI,
-    timeout: 30_000,
+    timeout: 60_000,
   },
 
   // Default project: Chromium desktop. Sprint 7 adds Firefox, WebKit and mobile.
