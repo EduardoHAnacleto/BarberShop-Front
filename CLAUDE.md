@@ -60,7 +60,14 @@ Update this section after closing each sprint sub-task so future sessions can pi
 
 **Sprint 5 — COMPLETE**
 
-Sprints 6–8 not started.
+**Sprint 6 — PWA e Performance**
+- [x] **S6.1 PWA** — `public/manifest.json` (name/short_name/icons/theme/bg), `public/icon-192.png` + `public/icon-512.png` (generated via `scripts/generate-icons.cjs`, dark bg + gold "B" pixel art). `@vite-pwa/nuxt` configured in `nuxt.config.ts` with `registerType: 'autoUpdate'`, workbox runtime caching (Google Fonts CacheFirst/1yr, images CacheFirst/50 entries, `/api/services|workers/all` StaleWhileRevalidate/5min, `/api/working-hours/*` NetworkFirst). `components/ui/UpdatePrompt.vue` uses `useRegisterSW()` from `virtual:pwa-register/vue` (type declarations in `types/pwa.d.ts`); shown as fixed gold banner when `needRefresh` is true. Banner added to `app.vue`. Commit: `feat(s6)`.
+- [x] **S6.2 Performance** — Chart components in `/admin` dashboard converted to `defineAsyncComponent` + `<Suspense>` with skeleton fallback (Chart.js splits to its own chunk). Landing page `/` converted from `onMounted` + Axios to `useLazyFetch` with `getCachedData` (5-min in-memory payload cache for services and workers). Admin link in `PublicNavbar` gets `prefetch` attribute. No `console.log` calls found. Build: 1.68 MB / 409 KB gzip. Commit: `feat(s6)`.
+- [x] **S6.3 Sprint 6 Tests** — `tests/e2e/pwa.spec.ts` (3 tests): installability check via `beforeinstallprompt` + manifest link assertion; offline page load via `context.setOffline(true)` + title assertion; service-worker cache intercept via `page.route`. Tests soft-assert SW behaviour (varies by browser/headless mode) but hard-assert page structure. Unit tests: 114/114. Build: clean. Commit: `feat(s6)`.
+
+**Sprint 6 — COMPLETE**
+
+Sprints 7–8 not started.
 
 ## Stack (locked by the plan — do not substitute)
 
