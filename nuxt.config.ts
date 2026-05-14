@@ -156,9 +156,9 @@ export default defineNuxtConfig({
     // Expose useRegisterSW() composable for the UiUpdatePrompt component.
     client: { installPrompt: true },
     devOptions: {
-      // Enable PWA in development so the service worker can be inspected.
-      enabled: true,
-      type: 'module',
+      // Disabled in dev: workbox files are not generated until `nuxt build`,
+      // so enabling here causes ENOENT errors on the dev server.
+      enabled: false,
     },
   },
 })
