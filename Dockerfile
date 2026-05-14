@@ -8,7 +8,7 @@ FROM node:22-alpine AS build
 WORKDIR /app
 
 COPY package*.json ./
-RUN npm ci --frozen-lockfile
+RUN npm ci
 
 ARG NUXT_PUBLIC_API_BASE=http://api:8080
 ARG NUXT_PUBLIC_GOOGLE_CLIENT_ID=
