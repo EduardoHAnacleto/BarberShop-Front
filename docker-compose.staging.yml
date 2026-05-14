@@ -68,7 +68,7 @@ services:
           END
           IF NOT EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[WorkersService]') AND type = 'U')
           BEGIN
-            CREATE TABLE [dbo].[WorkersService] ([ProvidedServicesServiceId] INT NOT NULL, [WorkersWorkerId] INT NOT NULL, CONSTRAINT [PK_WorkersService] PRIMARY KEY ([ProvidedServicesServiceId], [WorkersWorkerId]), CONSTRAINT [FK_WorkersService_Services] FOREIGN KEY ([ProvidedServicesServiceId]) REFERENCES [dbo].[Services] ([ServiceId]), CONSTRAINT [FK_WorkersService_Workers] FOREIGN KEY ([WorkersWorkerId]) REFERENCES [dbo].[Workers] ([WorkerId]));
+            CREATE TABLE [dbo].[WorkersService] ([ProvidedServicesId] INT NOT NULL, [WorkerId] INT NOT NULL, CONSTRAINT [PK_WorkersService] PRIMARY KEY ([ProvidedServicesId], [WorkerId]), CONSTRAINT [FK_WorkersService_Services] FOREIGN KEY ([ProvidedServicesId]) REFERENCES [dbo].[Services] ([ServiceId]), CONSTRAINT [FK_WorkersService_Workers] FOREIGN KEY ([WorkerId]) REFERENCES [dbo].[Workers] ([WorkerId]));
           END
           IF NOT EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[Users]') AND type = 'U')
           BEGIN
