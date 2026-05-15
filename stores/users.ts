@@ -28,7 +28,8 @@ export const useUsersStore = defineStore('users', () => {
     loading.value = true
     error.value = null
     try {
-      items.value = await api.users.all()
+      const result = await api.users.all()
+      items.value = Array.isArray(result) ? result : []
     } catch (e: unknown) {
       error.value = (e as Error).message
     } finally {

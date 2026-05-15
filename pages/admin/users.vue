@@ -256,7 +256,7 @@ onUnmounted(() => {
         >
       </div>
 
-      <select v-model.number="roleFilter" class="input max-w-[180px]">
+      <select v-model="roleFilter" class="input max-w-[180px]">
         <option :value="null">All roles</option>
         <option :value="UserRole.Admin">Admin</option>
         <option :value="UserRole.User">User</option>

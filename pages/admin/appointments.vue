@@ -235,13 +235,50 @@ const customerOptions = computed(() =>
   customersStore.items.map((c) => ({ id: c.id, label: c.name })),
 )
 
-const workerOptions = computed(() =>
-  workersStore.items.map((w) => ({ id: w.id, label: w.name })),
-)
+// When a service is already selected, only show workers that perform it.
+const workerOptions = computed(() => {
+  const base = workersStore.items
+  if (form.serviceId > 0) {
+    return base
+      .filter((w) => w.servicesId.includes(form.serviceId))
+      .map((w) => ({ id: w.id, label: w.name }))
+  }
+  return base.map((w) => ({ id: w.id, label: w.name }))
+})
 
-const serviceOptions = computed(() =>
-  servicesStore.items.map((s) => ({ id: s.id, label: s.name })),
-)
+// When a worker is already selected, only show services that worker performs.
+const serviceOptions = computed(() => {
+  const base = servicesStore.items
+  if (form.workerId > 0) {
+    const worker = workersStore.items.find((w) => w.id === form.workerId)
+    if (worker) {
+      return base
+        .filter((s) => worker.servicesId.includes(s.id))
+        .map((s) => ({ id: s.id, label: s.name }))
+    }
+  }
+  return base.map((s) => ({ id: s.id, label: s.name }))
+})
+
+// When worker changes, reset service if the current one is no longer available.
+watch(() => form.workerId, (newId) => {
+  if (newId === 0) return
+  const worker = workersStore.items.find((w) => w.id === newId)
+  if (worker && form.serviceId > 0 && !worker.servicesId.includes(form.serviceId)) {
+    form.serviceId = 0
+  }
+})
+
+// When service changes, reset worker if the current one doesn't perform it.
+watch(() => form.serviceId, (newId) => {
+  if (newId === 0) return
+  if (form.workerId > 0) {
+    const worker = workersStore.items.find((w) => w.id === form.workerId)
+    if (worker && !worker.servicesId.includes(newId)) {
+      form.workerId = 0
+    }
+  }
+})
 
 // ── Lifecycle ───────────────────────────────────────────────────────────────
 
