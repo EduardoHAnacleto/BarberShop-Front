@@ -18,7 +18,9 @@ Full-stack frontend for the [BarberShop API](https://github.com/EduardoHAnacleto
 
 ### 🌐 Public Portal
 - **Landing page** — hero section, live shop open/closed banner (polls every 5 min), services grid with price/duration, team grid with worker profiles
-- **3-step booking flow** — service selection → worker + time slot → customer details + confirmation; prevents double-booking by fetching occupied slots per worker in real time
+- **About page (`/about`)** — shop story, full-size Google Maps embed, address, phone (`tel:`) and email (`mailto:`) links; all contact data driven by `NUXT_PUBLIC_SHOP_*` env vars
+- **3-step booking flow** — service selection → worker + time slot → customer details + confirmation; prevents double-booking by fetching occupied slots per worker in real time; logged-in clients have name/email/phone pre-filled automatically from their profile
+- **Booking confirmation page** — shows appointment reference and a compact map card so clients know where to go
 - **PWA** — installable, works offline after first visit; new-version banner prompts updates automatically
 
 ### 🔐 Authentication
@@ -131,7 +133,8 @@ The backend API must be running — see [BarberShop](https://github.com/EduardoH
 BarberShop-Front/
 ├── pages/
 │   ├── index.vue              # Landing page (public)
-│   ├── book/                  # 3-step booking flow (public)
+│   ├── about.vue              # About page — story, map, contact (public)
+│   ├── book/                  # 3-step booking flow + confirmation (public)
 │   ├── my.vue                 # Client portal (auth: Client role)
 │   ├── worker.vue             # Worker portal (auth: Worker role)
 │   ├── login.vue / register.vue / staff-login.vue
@@ -153,6 +156,7 @@ BarberShop-Front/
 │   ├── ui/                    # Design system primitives (Modal, Toast, Skeleton…)
 │   ├── dashboard/             # Chart components (async-loaded)
 │   ├── booking/               # 3-step booking sub-components
+│   ├── shop/                  # ShopLocationCard — map + contact, used on /about and /book/success
 │   └── layout/                # AdminSidebar, PublicNavbar
 └── tests/
     ├── unit/                  # 114 unit + integration tests
@@ -194,14 +198,20 @@ npm run test:all         # unit + E2E
 
 ## ⚙️ Environment Variables
 
-| Variable                    | Required | Description                                           |
-|----------------------------|----------|-------------------------------------------------------|
-| `NUXT_PUBLIC_API_BASE`      | Yes      | BarberShop API base URL (e.g. `http://localhost:8080`)|
-| `NUXT_PUBLIC_GOOGLE_CLIENT_ID` | No   | Google OAuth Client ID for "Sign in with Google"     |
-| `SENTRY_DSN`               | No       | Sentry DSN — leave blank to disable error monitoring  |
-| `SA_PASSWORD`              | Docker   | SQL Server SA password                                |
-| `JWT_KEY`                  | Docker   | JWT signing key (≥ 32 chars)                          |
-| `API_IMAGE`                | Docker   | Docker Hub image for the API service (default: `eduardohanacleto/barbershop-full:1.0.0`) |
+| Variable                       | Required | Description                                           |
+|-------------------------------|----------|-------------------------------------------------------|
+| `NUXT_PUBLIC_API_BASE`         | Yes      | BarberShop API base URL (e.g. `http://localhost:8080`)|
+| `NUXT_PUBLIC_GOOGLE_CLIENT_ID` | No       | Google OAuth Client ID for "Sign in with Google"     |
+| `NUXT_PUBLIC_SHOP_ADDRESS`     | No       | Shop street address shown on `/about` and booking confirmation (default: Sky Tower Auckland placeholder) |
+| `NUXT_PUBLIC_SHOP_PHONE`       | No       | Shop phone number — rendered as `tel:` link           |
+| `NUXT_PUBLIC_SHOP_EMAIL`       | No       | Shop email — rendered as `mailto:` link               |
+| `NUXT_PUBLIC_SHOP_LAT`         | No       | Latitude for the Google Maps embed                    |
+| `NUXT_PUBLIC_SHOP_LNG`         | No       | Longitude for the Google Maps embed                   |
+| `NUXT_PUBLIC_GOOGLE_MAPS_API_KEY` | No    | Maps Embed API key — without it a no-key URL is used  |
+| `SENTRY_DSN`                   | No       | Sentry DSN — leave blank to disable error monitoring  |
+| `SA_PASSWORD`                  | Docker   | SQL Server SA password                                |
+| `JWT_KEY`                      | Docker   | JWT signing key (≥ 32 chars)                          |
+| `API_IMAGE`                    | Docker   | Docker Hub image for the API service (default: `eduardohanacleto/barbershop-full:1.0.0`) |
 
 ---
 

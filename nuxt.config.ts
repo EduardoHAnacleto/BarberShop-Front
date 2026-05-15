@@ -40,6 +40,16 @@ export default defineNuxtConfig({
     public: {
       apiBase: '',
       googleClientId: '',
+      // Shop contact & location — defaults are Sky Tower Auckland placeholders.
+      // Override at build time via NUXT_PUBLIC_SHOP_* env vars.
+      shopAddress: '1 Sky City, Victoria St W, Auckland CBD 1010, New Zealand',
+      shopPhone: '+64 9 000 0000',
+      shopEmail: 'info@barbershop.com',
+      shopLat: '-36.8682',
+      shopLng: '174.7620',
+      // Optional Google Maps Embed API key (NUXT_PUBLIC_GOOGLE_MAPS_API_KEY).
+      // Without it, a no-key embed URL is used (suitable for development).
+      googleMapsApiKey: '',
     },
   },
 

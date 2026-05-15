@@ -36,12 +36,15 @@ watchEffect(async () => {
 
       <!-- Page anchor links + auth CTAs. -->
       <nav class="flex items-center gap-4 sm:gap-5">
-        <a href="#services" class="text-sm text-secondary hover:text-primary transition-colors">
+        <NuxtLink to="/#services" class="text-sm text-secondary hover:text-primary transition-colors">
           Services
-        </a>
-        <a href="#team" class="text-sm text-secondary hover:text-primary transition-colors">
+        </NuxtLink>
+        <NuxtLink to="/#team" class="text-sm text-secondary hover:text-primary transition-colors">
           Team
-        </a>
+        </NuxtLink>
+        <NuxtLink to="/about" class="text-sm text-secondary hover:text-primary transition-colors">
+          About
+        </NuxtLink>
         <NuxtLink to="/book" class="text-sm text-secondary hover:text-primary transition-colors">
           Book
         </NuxtLink>

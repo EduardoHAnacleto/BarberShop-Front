@@ -14,6 +14,7 @@ const route = useRoute()
 const router = useRouter()
 const { api } = useApi()
 const toast = useToast()
+const { isLoggedIn, userId, userEmail } = useAuth()
 
 // ── Step management ───────────────────────────────────────────────────────────
 
@@ -75,6 +76,13 @@ const selectedTime = ref('')
 // ── Step 3 state ──────────────────────────────────────────────────────────────
 
 const submitting = ref(false)
+
+// ID of the logged-in user's linked customer record.
+// When set, the booking flow skips customer creation and reuses this record.
+const existingCustomerId = ref<number | null>(null)
+
+// Pre-filled contact values resolved from the logged-in customer's profile.
+const prefill = reactive({ name: '', email: '', phone: '' })
 
 // ── Navigation helpers ────────────────────────────────────────────────────────
 
@@ -181,12 +189,18 @@ async function handleConfirm(payload: { name: string; email: string; phone: stri
 
   submitting.value = true
   try {
-    // 1. Create or retrieve the customer record.
-    const customer = await api.customers.create({
-      name: payload.name,
-      email: payload.email,
-      phoneNumber: payload.phone,
-    })
+    // 1. Reuse the logged-in customer's record when available; otherwise create one.
+    let customerId: number
+    if (existingCustomerId.value !== null) {
+      customerId = existingCustomerId.value
+    } else {
+      const customer = await api.customers.create({
+        name: payload.name,
+        email: payload.email,
+        phoneNumber: payload.phone,
+      })
+      customerId = customer.id
+    }
 
     // 2. Build the ISO scheduledFor string from the selected date + time.
     const scheduledFor = `${selectedDate.value}T${selectedTime.value}:00`
@@ -194,7 +208,7 @@ async function handleConfirm(payload: { name: string; email: string; phone: stri
     // 3. Create the appointment. The backend validates worker+customer conflicts
     //    as a final guard; the frontend already filters worker slot conflicts.
     const appointment = await api.appointments.create({
-      customerId: customer.id,
+      customerId,
       workerId: selectedWorker.value.id,
       serviceId: selectedService.value.id,
       scheduledFor,
@@ -237,6 +251,26 @@ onMounted(async () => {
   if (qId) {
     const match = services.value.find((s) => s.id === qId)
     if (match) selectedService.value = match
+  }
+
+  // Resolve the logged-in customer's profile to pre-fill step 3.
+  // Non-fatal: if this fails the form is left empty for manual input.
+  if (isLoggedIn.value && userId.value) {
+    try {
+      const user = await api.users.byId(Number(userId.value))
+      if (user.customerId) {
+        existingCustomerId.value = user.customerId
+        const customer = await api.customers.byId(user.customerId)
+        prefill.name = customer.name
+        prefill.email = customer.email
+        prefill.phone = customer.phoneNumber
+      } else {
+        // No linked customer yet — at least pre-fill the email from the JWT.
+        prefill.email = userEmail.value ?? ''
+      }
+    } catch {
+      // Silently ignore; the user can fill in the form manually.
+    }
   }
 })
 </script>
@@ -289,6 +323,7 @@ onMounted(async () => {
         :selected-date="selectedDate"
         :selected-time="selectedTime"
         :submitting="submitting"
+        :prefill="prefill"
         @confirm="handleConfirm"
       />
 

@@ -3,7 +3,7 @@
 // Validates the form locally before emitting the confirm event.
 import type { Service, Worker } from '~/types'
 
-defineProps<{
+const props = defineProps<{
   // The service selected in step 1.
   service: Service
   // The worker selected in step 2.
@@ -14,6 +14,8 @@ defineProps<{
   selectedTime: string
   // True while the parent is submitting the booking.
   submitting: boolean
+  // Pre-fill values resolved from the logged-in user's customer profile.
+  prefill?: { name: string; email: string; phone: string }
 }>()
 
 const emit = defineEmits<{
@@ -21,10 +23,10 @@ const emit = defineEmits<{
   (e: 'confirm', payload: { name: string; email: string; phone: string }): void
 }>()
 
-// Customer form fields.
-const name = ref('')
-const email = ref('')
-const phone = ref('')
+// Customer form fields — seeded from the logged-in user's profile when available.
+const name = ref(props.prefill?.name ?? '')
+const email = ref(props.prefill?.email ?? '')
+const phone = ref(props.prefill?.phone ?? '')
 
 // Simple client-side validation: name and email are required, email must be valid.
 const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/

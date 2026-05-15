@@ -45,6 +45,11 @@ const appointmentId = computed(() => route.query.appointmentId ?? null)
         <NuxtLink to="/book" class="btn-primary">Book another</NuxtLink>
         <NuxtLink to="/" class="btn-outline">Back to Home</NuxtLink>
       </div>
+
+      <!-- Shop location — compact map so the customer knows where to go. -->
+      <div class="w-full max-w-md mt-10">
+        <ShopLocationCard :compact="true" />
+      </div>
     </div>
   </div>
 </template>

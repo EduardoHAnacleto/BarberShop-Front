@@ -126,6 +126,12 @@ services:
       args:
         NUXT_PUBLIC_API_BASE: https://${DOMAIN:-localhost}
         NUXT_PUBLIC_GOOGLE_CLIENT_ID: "${NUXT_PUBLIC_GOOGLE_CLIENT_ID:-}"
+        NUXT_PUBLIC_SHOP_ADDRESS: "${NUXT_PUBLIC_SHOP_ADDRESS:-1 Sky City, Victoria St W, Auckland CBD 1010, New Zealand}"
+        NUXT_PUBLIC_SHOP_PHONE: "${NUXT_PUBLIC_SHOP_PHONE:-+64 9 000 0000}"
+        NUXT_PUBLIC_SHOP_EMAIL: "${NUXT_PUBLIC_SHOP_EMAIL:-info@barbershop.com}"
+        NUXT_PUBLIC_SHOP_LAT: "${NUXT_PUBLIC_SHOP_LAT:--36.8682}"
+        NUXT_PUBLIC_SHOP_LNG: "${NUXT_PUBLIC_SHOP_LNG:-174.7620}"
+        NUXT_PUBLIC_GOOGLE_MAPS_API_KEY: "${NUXT_PUBLIC_GOOGLE_MAPS_API_KEY:-}"
     container_name: barbershop-frontend
     environment:
       - NODE_ENV=production
