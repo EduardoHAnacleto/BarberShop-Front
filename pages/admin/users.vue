@@ -11,6 +11,8 @@ definePageMeta({ layout: 'admin', middleware: 'admin' })
 // ── Stores ─────────────────────────────────────────────────────────────────
 
 const usersStore = useUsersStore()
+const customersStore = useCustomersStore()
+const workersStore = useWorkersStore()
 const { items, loading } = storeToRefs(usersStore)
 
 // ── Filter ─────────────────────────────────────────────────────────────────
@@ -218,12 +220,29 @@ function formatLockout(iso: string): string {
   return dayjs(iso).format('MMM DD, HH:mm')
 }
 
+// ── Link select options ─────────────────────────────────────────────────────
+
+// id=0 acts as "no selection"; the @update handler converts 0 back to null.
+const customerOptions = computed(() => [
+  { id: 0, label: '— None —' },
+  ...customersStore.items.map((c) => ({ id: c.id, label: c.name })),
+])
+
+const workerOptions = computed(() => [
+  { id: 0, label: '— None —' },
+  ...workersStore.items.map((w) => ({ id: w.id, label: w.name })),
+])
+
 // ── Lifecycle ───────────────────────────────────────────────────────────────
 
 let unsubscribe: (() => void) | null = null
 
 onMounted(async () => {
-  await usersStore.fetchAll()
+  await Promise.all([
+    usersStore.fetchAll(),
+    customersStore.fetchAll(),
+    workersStore.fetchAll(),
+  ])
   unsubscribe = usersStore.subscribeRealtime()
 })
 
@@ -403,13 +422,25 @@ onUnmounted(() => {
         </div>
 
         <div class="form-group">
-          <label class="label" for="user-customer-id">Customer ID <span class="text-muted">(optional)</span></label>
-          <input id="user-customer-id" v-model.number="form.customerId" class="input" type="number" min="1" autocomplete="off">
+          <label class="label" for="user-customer">Linked customer <span class="text-muted">(optional)</span></label>
+          <UiSearchSelect
+            :model-value="form.customerId ?? 0"
+            :options="customerOptions"
+            placeholder="Search customer…"
+            input-id="user-customer"
+            @update:model-value="(v) => { form.customerId = v === 0 ? null : v }"
+          />
         </div>
 
         <div class="form-group">
-          <label class="label" for="user-worker-id">Worker ID <span class="text-muted">(optional)</span></label>
-          <input id="user-worker-id" v-model.number="form.workerId" class="input" type="number" min="1" autocomplete="off">
+          <label class="label" for="user-worker">Linked worker <span class="text-muted">(optional)</span></label>
+          <UiSearchSelect
+            :model-value="form.workerId ?? 0"
+            :options="workerOptions"
+            placeholder="Search worker…"
+            input-id="user-worker"
+            @update:model-value="(v) => { form.workerId = v === 0 ? null : v }"
+          />
         </div>
       </form>
 
