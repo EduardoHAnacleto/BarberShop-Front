@@ -156,8 +156,18 @@ onMounted(() => {
         </button>
       </form>
 
+      <!-- Back to home -->
+      <div class="text-center mt-5">
+        <NuxtLink to="/" class="inline-flex items-center gap-1.5 text-sm text-muted hover:text-primary transition-colors">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+          </svg>
+          Back to home
+        </NuxtLink>
+      </div>
+
       <!-- Links for clients: register or switch to staff login. -->
-      <p class="text-center text-sm text-muted mt-5">
+      <p class="text-center text-sm text-muted mt-3">
         Don't have an account?
         <NuxtLink to="/register" class="text-gold-400 hover:underline ml-1">Register</NuxtLink>
       </p>
