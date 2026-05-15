@@ -233,6 +233,44 @@ const workerOptions = computed(() => [
   ...workersStore.items.map((w) => ({ id: w.id, label: w.name })),
 ])
 
+// ── Email auto-fill ─────────────────────────────────────────────────────────
+
+const emailDropdownOpen = ref(false)
+
+// Unique non-empty emails collected from the selected customer and worker.
+// Returns 0, 1, or 2 entries. Two entries means the emails differ.
+const emailSuggestions = computed<string[]>(() => {
+  const emails: string[] = []
+  if (form.customerId) {
+    const c = customersStore.items.find((x) => x.id === form.customerId)
+    if (c?.email) emails.push(c.email)
+  }
+  if (form.workerId) {
+    const w = workersStore.items.find((x) => x.id === form.workerId)
+    if (w?.email && !emails.includes(w.email)) emails.push(w.email)
+  }
+  return emails
+})
+
+// Auto-fill the email when there is exactly one unique suggestion.
+// When two different emails are available the dropdown lets the user choose.
+watch(emailSuggestions, (suggestions) => {
+  if (suggestions.length === 1) form.email = suggestions[0]
+})
+
+function onEmailFocus(): void {
+  if (emailSuggestions.value.length > 1) emailDropdownOpen.value = true
+}
+
+function onEmailBlur(): void {
+  emailDropdownOpen.value = false
+}
+
+function pickEmail(email: string): void {
+  form.email = email
+  emailDropdownOpen.value = false
+}
+
 // ── Lifecycle ───────────────────────────────────────────────────────────────
 
 let unsubscribe: (() => void) | null = null
@@ -384,11 +422,68 @@ onUnmounted(() => {
     <!-- Create / Edit modal -->
     <UiModal v-model="showModal" :title="editing ? 'Edit user' : 'New user'" size="md">
       <form class="space-y-4" @submit.prevent="saveUser">
+        <!-- Linked customer — selecting one auto-fills the email field -->
         <div class="form-group">
-          <label class="label" for="user-email">Email</label>
-          <input id="user-email" v-model="form.email" class="input" type="email" autocomplete="email" required>
+          <label class="label" for="user-customer">Linked customer <span class="text-muted">(optional)</span></label>
+          <UiSearchSelect
+            :model-value="form.customerId ?? 0"
+            :options="customerOptions"
+            placeholder="Search customer…"
+            input-id="user-customer"
+            @update:model-value="(v) => { form.customerId = v === 0 ? null : v }"
+          />
         </div>
 
+        <!-- Linked worker — selecting one auto-fills the email field -->
+        <div class="form-group">
+          <label class="label" for="user-worker">Linked worker <span class="text-muted">(optional)</span></label>
+          <UiSearchSelect
+            :model-value="form.workerId ?? 0"
+            :options="workerOptions"
+            placeholder="Search worker…"
+            input-id="user-worker"
+            @update:model-value="(v) => { form.workerId = v === 0 ? null : v }"
+          />
+        </div>
+
+        <!-- Email — auto-filled from the linked record.
+             When both links have different emails a dropdown lets the user pick. -->
+        <div class="form-group">
+          <label class="label" for="user-email">Email</label>
+          <div class="relative">
+            <input
+              id="user-email"
+              v-model="form.email"
+              class="input"
+              type="email"
+              autocomplete="email"
+              required
+              @focus="onEmailFocus"
+              @blur="onEmailBlur"
+            >
+            <ul
+              v-if="emailDropdownOpen"
+              class="absolute z-50 w-full mt-1 surface border border-border rounded-lg shadow-lg max-h-48 overflow-y-auto"
+            >
+              <li
+                v-for="email in emailSuggestions"
+                :key="email"
+                class="px-3 py-2 text-sm cursor-pointer transition-colors"
+                :class="email === form.email
+                  ? 'text-primary font-medium bg-gold-500/10'
+                  : 'text-secondary hover:bg-gold-500/10 hover:text-primary'"
+                @mousedown.prevent="pickEmail(email)"
+              >
+                {{ email }}
+              </li>
+            </ul>
+          </div>
+          <p v-if="emailSuggestions.length > 1 && !form.email" class="text-xs text-gold-400 mt-1">
+            Two emails available — focus the field to choose.
+          </p>
+        </div>
+
+        <!-- Password (create only) -->
         <div v-if="!editing" class="form-group">
           <label class="label" for="user-password">Password <span class="text-muted">(min 8 chars)</span></label>
           <input
@@ -405,6 +500,7 @@ onUnmounted(() => {
           </p>
         </div>
 
+        <!-- Role -->
         <div class="form-group">
           <label class="label" for="user-role">Role</label>
           <select id="user-role" v-model.number="form.userRole" class="input">
@@ -414,33 +510,12 @@ onUnmounted(() => {
           </select>
         </div>
 
+        <!-- Active toggle -->
         <div class="form-group">
           <label class="label flex items-center gap-2">
             <input v-model="form.isActive" type="checkbox" class="accent-gold-500 w-4 h-4">
             Active
           </label>
-        </div>
-
-        <div class="form-group">
-          <label class="label" for="user-customer">Linked customer <span class="text-muted">(optional)</span></label>
-          <UiSearchSelect
-            :model-value="form.customerId ?? 0"
-            :options="customerOptions"
-            placeholder="Search customer…"
-            input-id="user-customer"
-            @update:model-value="(v) => { form.customerId = v === 0 ? null : v }"
-          />
-        </div>
-
-        <div class="form-group">
-          <label class="label" for="user-worker">Linked worker <span class="text-muted">(optional)</span></label>
-          <UiSearchSelect
-            :model-value="form.workerId ?? 0"
-            :options="workerOptions"
-            placeholder="Search worker…"
-            input-id="user-worker"
-            @update:model-value="(v) => { form.workerId = v === 0 ? null : v }"
-          />
         </div>
       </form>
 
