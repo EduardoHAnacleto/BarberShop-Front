@@ -105,7 +105,9 @@ export function useApi() {
     // Authentication endpoints.
     auth: {
       login: (body: LoginRequest) => post<AuthResponse>('/api/auth/login', body),
-      google: (idToken: string) => post<AuthResponse>('/api/auth/google', { idToken }),
+      // rememberMe asks the API to mint a long-lived (30-day) JWT.
+      google: (idToken: string, rememberMe: boolean = false) =>
+        post<AuthResponse>('/api/auth/google', { idToken, rememberMe }),
       register: (body: { name: string; email: string; password: string; phoneNumber: string; dateOfBirth: string | null }) =>
         post<AuthResponse>('/api/auth/register', body),
       unlock: (userId: number) => post<string>(`/api/auth/unlock/${userId}`),

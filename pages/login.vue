@@ -15,6 +15,10 @@ const loading = ref(false)
 // Whether the password field is shown as plain text.
 const showPassword = ref(false)
 
+// When true, the API issues a 30-day JWT and the cookie is persisted across
+// browser restarts. Also forwarded to the Google login callback below.
+const rememberMe = ref(false)
+
 // Redirect authenticated users away from the login page immediately.
 // Admins go to /admin; all other roles go to /my (client portal).
 watchEffect(() => {
@@ -29,7 +33,7 @@ watchEffect(() => {
 // _hydrate() has committed the auth state, preventing a blank reload on /my.
 async function handleLogin(): Promise<void> {
   loading.value = true
-  const success = await login(form.email, form.password)
+  const success = await login(form.email, form.password, rememberMe.value)
   loading.value = false
   if (success) {
     const redirect = (route.query.redirect as string) || (isAdmin.value ? '/admin' : '/my')
@@ -42,21 +46,46 @@ async function handleLogin(): Promise<void> {
 // throws "parameter client_id is not set correctly".
 const googleEnabled = computed(() => !!useRuntimeConfig().public.googleClientId)
 
-// Initialises the Google Identity Services button in the #google-btn container.
+// Initialises the Google Identity Services button in the #google-btn container
+// and triggers the One Tap prompt so users already signed into Google on this
+// device get an automatic sign-in popup without clicking anything.
 function initGoogle(): void {
   // window.google is injected by the GSI script loaded in nuxt.config.ts head.
   window.google?.accounts.id.initialize({
     client_id: useRuntimeConfig().public.googleClientId as string,
+    // Reads rememberMe.value at the moment Google returns the credential so the
+    // user's current checkbox choice is honoured for the Google flow as well.
     callback: async (response: { credential: string }) => {
-      await loginWithGoogle(response.credential)
+      await loginWithGoogle(response.credential, rememberMe.value)
     },
+    // auto_select silently re-signs in returning users who previously consented
+    // — together with prompt() this gives true one-click login.
+    auto_select: true,
+    // FedCM is required by Chrome for One Tap in newer versions.
+    use_fedcm_for_prompt: true,
+    // Keep the One Tap card open if the user clicks outside of it.
+    cancel_on_tap_outside: false,
+    // Localises the button/prompt copy as "Sign in".
+    context: 'signin',
+    // Improves One Tap support on Safari/Firefox under ITP restrictions.
+    itp_support: true,
   })
 
+  // Renders the visible "Sign in with Google" button as a fallback for when
+  // One Tap is suppressed (e.g. user already dismissed it, FedCM blocked).
   window.google?.accounts.id.renderButton(document.getElementById('google-btn')!, {
     theme: 'filled_black',
     size: 'large',
     width: 300,
+    type: 'standard',
+    text: 'continue_with',
+    shape: 'rectangular',
+    logo_alignment: 'left',
   })
+
+  // Display Google's One Tap card immediately — uses the account already
+  // signed into the device's browser to offer one-click sign-in.
+  window.google?.accounts.id.prompt()
 }
 
 // Mount the Google button once the SDK is available. Retries every 200 ms
@@ -143,6 +172,21 @@ onMounted(() => {
               <SidebarIcon :icon="showPassword ? 'eye-off' : 'eye'" />
             </button>
           </div>
+        </div>
+
+        <!-- Remember-me checkbox — opts into a long-lived 30-day cookie. -->
+        <div class="flex items-center gap-2">
+          <input
+            id="remember-me"
+            v-model="rememberMe"
+            type="checkbox"
+            autocomplete="off"
+            class="w-4 h-4 rounded border-border bg-surface-elev text-gold-500
+                   focus:ring-gold-500/40 cursor-pointer"
+          >
+          <label for="remember-me" class="text-sm text-secondary cursor-pointer select-none">
+            Remember me
+          </label>
         </div>
 
         <!-- Submit button — shows a spinner while loading. -->

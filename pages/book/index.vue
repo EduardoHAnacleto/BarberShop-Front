@@ -6,7 +6,7 @@
 // See sprint plan S5.2 for the full specification.
 import type { Service, Worker, BusinessSchedule, Appointment } from '~/types'
 import { AppointmentStatus } from '~/types'
-import { generateTimeSlots, filterAvailableSlots } from '~/utils/timeSlots'
+import { generateTimeSlots, filterAvailableSlots, filterPastSlots } from '~/utils/timeSlots'
 
 definePageMeta({ layout: 'default' })
 
@@ -55,7 +55,11 @@ const timeSlots = computed<string[]>(() => {
     schedule.value.breakEnd ?? null,
   )
 
-  if (!selectedService.value) return rawSlots
+  // Drop any slot whose start has already passed for the local "now". This
+  // only affects same-day bookings; future dates are unchanged.
+  const futureSlots = filterPastSlots(rawSlots, selectedDate.value)
+
+  if (!selectedService.value) return futureSlots
 
   // Build an occupied period for every active appointment on this day.
   // The period spans [startMinutes, startMinutes + serviceDuration).
@@ -68,7 +72,7 @@ const timeSlots = computed<string[]>(() => {
     return { startMinutes, endMinutes: startMinutes + duration }
   })
 
-  return filterAvailableSlots(rawSlots, occupied, selectedService.value.duration)
+  return filterAvailableSlots(futureSlots, occupied, selectedService.value.duration)
 })
 
 const selectedTime = ref('')

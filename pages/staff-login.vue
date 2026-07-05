@@ -14,6 +14,9 @@ const form = reactive({ email: '', password: '' })
 const loading = ref(false)
 const showPassword = ref(false)
 
+// Opts into a long-lived (30 day) cookie + JWT — same as the client login flow.
+const rememberMe = ref(false)
+
 // Redirect already-authenticated users to the right portal immediately.
 watchEffect(() => {
   if (!isLoggedIn.value) return
@@ -25,7 +28,7 @@ watchEffect(() => {
 // Explicit navigateTo after login() so auth state is committed before route change.
 async function handleLogin(): Promise<void> {
   loading.value = true
-  const success = await login(form.email, form.password)
+  const success = await login(form.email, form.password, rememberMe.value)
   loading.value = false
   if (success) {
     await navigateTo(isAdmin.value ? '/admin' : '/worker')
@@ -148,6 +151,21 @@ async function handleLogin(): Promise<void> {
                 <SidebarIcon :icon="showPassword ? 'eye-off' : 'eye'" />
               </button>
             </div>
+          </div>
+
+          <!-- Remember-me opts the staff session into a 30-day cookie. -->
+          <div class="flex items-center gap-2">
+            <input
+              id="staff-remember-me"
+              v-model="rememberMe"
+              type="checkbox"
+              autocomplete="off"
+              class="w-4 h-4 rounded border-border bg-surface-elev text-gold-500
+                     focus:ring-gold-500/40 cursor-pointer"
+            >
+            <label for="staff-remember-me" class="text-sm text-secondary cursor-pointer select-none">
+              Remember me
+            </label>
           </div>
 
           <button type="submit" class="btn-primary w-full" :disabled="loading">

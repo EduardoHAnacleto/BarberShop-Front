@@ -150,15 +150,18 @@ export interface WorkingHours {
 // ─── Auth ─────────────────────────────────────────────────────────────────────
 
 // Credentials sent to POST /api/auth/login.
+// rememberMe asks the API to issue a long-lived (30-day) JWT.
 export interface LoginRequest {
   email: string
   password: string
+  rememberMe?: boolean
 }
 
 // Payload sent to POST /api/auth/google when using the Google Identity
-// Services flow.
+// Services flow. rememberMe behaves the same as in LoginRequest.
 export interface GoogleLoginRequest {
   idToken: string
+  rememberMe?: boolean
 }
 
 // Response from both /api/auth/login and /api/auth/google on success.
