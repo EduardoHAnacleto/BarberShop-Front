@@ -1,6 +1,12 @@
-// Unit tests for utils/timeSlots.ts — generateTimeSlots() and filterAvailableSlots().
+// Unit tests for utils/timeSlots.ts — generateTimeSlots(), filterAvailableSlots()
+// and filterPastSlots().
 import { describe, it, expect } from 'vitest'
-import { generateTimeSlots, filterAvailableSlots } from '~/utils/timeSlots'
+import {
+  generateTimeSlots,
+  filterAvailableSlots,
+  filterPastSlots,
+  MIN_LEAD_TIME_MINUTES,
+} from '~/utils/timeSlots'
 import type { OccupiedPeriod } from '~/utils/timeSlots'
 
 describe('generateTimeSlots()', () => {
@@ -94,5 +100,53 @@ describe('filterAvailableSlots()', () => {
     expect(available).not.toContain('14:30')
     expect(available).toContain('10:30')
     expect(available).toContain('15:00')
+  })
+})
+
+describe('filterPastSlots()', () => {
+  // 09:00–18:00 every 30 min — fixture used across the same-day tests.
+  const slots = generateTimeSlots('09:00', '18:00', null, null, 30)
+
+  it('returns all slots unchanged when the selected date is in the future', () => {
+    // Selected date is tomorrow; "now" is irrelevant for future dates.
+    const now = new Date(2026, 4, 18, 15, 30) // 2026-05-18 15:30 local time
+    const tomorrow = '2026-05-19'
+    expect(filterPastSlots(slots, tomorrow, now)).toEqual(slots)
+  })
+
+  it('removes slots that have already started today', () => {
+    // Local-time "now" of 15:30 on 2026-05-18 — any slot ≤ 15:30 is filtered out.
+    const now = new Date(2026, 4, 18, 15, 30)
+    const today = '2026-05-18'
+    const result = filterPastSlots(slots, today, now)
+    expect(result).not.toContain('09:00')
+    expect(result).not.toContain('15:00')
+    expect(result).not.toContain('15:30') // strict ">": same-minute slot counts as past
+    expect(result).toContain('16:00')
+    expect(result).toContain('17:30')
+  })
+
+  it('returns an empty array when "now" is past every slot', () => {
+    const now = new Date(2026, 4, 18, 23, 0) // 23:00 — after the shop closes
+    const today = '2026-05-18'
+    expect(filterPastSlots(slots, today, now)).toEqual([])
+  })
+
+  it('returns all slots when "now" is before every slot', () => {
+    // Pre-opening time — nothing has expired yet.
+    const now = new Date(2026, 4, 18, 7, 0)
+    const today = '2026-05-18'
+    expect(filterPastSlots(slots, today, now)).toEqual(slots)
+  })
+
+  it('excludes same-day slots that start less than MIN_LEAD_TIME_MINUTES from now', () => {
+    // Now is 15:55 — the 16:00 slot is only 5 minutes away, under the buffer.
+    const now = new Date(2026, 4, 18, 15, 55)
+    const today = '2026-05-18'
+    const result = filterPastSlots(slots, today, now)
+    expect(result).not.toContain('16:00')
+    // 16:30 is 35 minutes away — clears the MIN_LEAD_TIME_MINUTES buffer.
+    expect(result).toContain('16:30')
+    expect(MIN_LEAD_TIME_MINUTES).toBeLessThan(35)
   })
 })

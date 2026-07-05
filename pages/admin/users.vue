@@ -255,7 +255,8 @@ const emailSuggestions = computed<string[]>(() => {
 // Auto-fill the email when there is exactly one unique suggestion.
 // When two different emails are available the dropdown lets the user choose.
 watch(emailSuggestions, (suggestions) => {
-  if (suggestions.length === 1) form.email = suggestions[0]
+  const [onlySuggestion] = suggestions
+  if (suggestions.length === 1 && onlySuggestion !== undefined) form.email = onlySuggestion
 })
 
 function onEmailFocus(): void {

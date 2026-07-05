@@ -35,14 +35,24 @@ export function useAuth() {
     userId: null,
   }))
 
-  // Cookie persists across page reloads and tab opens (24 h, sameSite: lax).
-  // `secure` is enabled in production only; dev runs over plain HTTP on localhost
-  // and browsers refuse to set Secure cookies on non-HTTPS origins.
-  const tokenCookie = useCookie<string | null>('bs_token', {
-    maxAge: 86_400,
-    secure: !import.meta.dev,
-    sameSite: 'lax',
-  })
+  // Default cookie lifetime — 24 h. Seconds in 30 days — lifetime of the
+  // "Remember me" cookie, matching the long-lived JWT the API issues when
+  // rememberMe=true.
+  const DEFAULT_MAX_AGE = 86_400
+  const REMEMBER_ME_MAX_AGE = 60 * 60 * 24 * 30
+
+  // Single source of truth for the bs_token cookie binding. `secure` is
+  // enabled in production only; dev runs over plain HTTP on localhost and
+  // browsers refuse to set Secure cookies on non-HTTPS origins. maxAge is
+  // parametrized so remember-me sessions can request a 30-day lifetime
+  // without creating a second, out-of-sync ref bound to the same cookie name.
+  function tokenCookie(maxAge: number = DEFAULT_MAX_AGE) {
+    return useCookie<string | null>('bs_token', {
+      maxAge,
+      secure: !import.meta.dev,
+      sameSite: 'lax',
+    })
+  }
 
   const { api } = useApi()
   const toast = useToast()
@@ -51,7 +61,9 @@ export function useAuth() {
 
   // Decodes the JWT, validates expiry, and populates auth state + cookie.
   // Calls logout if the token is already expired to avoid stale state.
-  function _hydrate(token: string): void {
+  // When rememberMe=true, rewrites the cookie with a 30-day lifetime so the
+  // session survives browser restarts.
+  function _hydrate(token: string, rememberMe: boolean = false): void {
     const decoded = jwtDecode<JwtPayload>(token)
 
     if (decoded.exp * 1000 < Date.now()) {
@@ -66,22 +78,29 @@ export function useAuth() {
       role: decoded.role ?? decoded[ROLE_CLAIM_URI] ?? null,
       userId: decoded.sub,
     }
-    tokenCookie.value = token
+
+    tokenCookie(rememberMe ? REMEMBER_ME_MAX_AGE : DEFAULT_MAX_AGE).value = token
   }
 
   // Re-hydrate from an existing cookie when the client first loads and the
   // global state is still empty (e.g. after a page refresh).
-  if (import.meta.client && tokenCookie.value && !state.value.token) {
-    _hydrate(tokenCookie.value)
+  const existingToken = tokenCookie().value
+  if (import.meta.client && existingToken && !state.value.token) {
+    _hydrate(existingToken)
   }
 
   // ── Public actions ───────────────────────────────────────────────────────
 
   // Authenticates with email/password; returns true on success.
-  async function login(email: string, password: string): Promise<boolean> {
+  // rememberMe asks the API for a long-lived JWT and persists the cookie 30 days.
+  async function login(
+    email: string,
+    password: string,
+    rememberMe: boolean = false,
+  ): Promise<boolean> {
     try {
-      const res: AuthResponse = await api.auth.login({ email, password })
-      _hydrate(res.token)
+      const res: AuthResponse = await api.auth.login({ email, password, rememberMe })
+      _hydrate(res.token, rememberMe)
       toast.success('Signed in successfully')
       return true
     } catch (error: unknown) {
@@ -94,11 +113,14 @@ export function useAuth() {
   }
 
   // Authenticates with a Google Identity Services credential; returns true on
-  // success. Follows the same hydrate + toast pattern as login().
-  async function loginWithGoogle(idToken: string): Promise<boolean> {
+  // success. rememberMe behaves identically to the email/password flow.
+  async function loginWithGoogle(
+    idToken: string,
+    rememberMe: boolean = false,
+  ): Promise<boolean> {
     try {
-      const res: AuthResponse = await api.auth.google(idToken)
-      _hydrate(res.token)
+      const res: AuthResponse = await api.auth.google(idToken, rememberMe)
+      _hydrate(res.token, rememberMe)
       toast.success('Signed in with Google')
       return true
     } catch (error: unknown) {
@@ -110,9 +132,15 @@ export function useAuth() {
   }
 
   // Clears all auth state and redirects to the login page.
+  // Also tells Google to skip auto-select on the next visit so the user can
+  // pick a different account (without this, One Tap would immediately re-sign
+  // them in with the same Google account they just logged out from).
   function logout(): void {
     state.value = { token: null, email: null, role: null, userId: null }
-    tokenCookie.value = null
+    tokenCookie().value = null
+    if (import.meta.client) {
+      window.google?.accounts.id.disableAutoSelect()
+    }
     navigateTo('/login')
   }
 
