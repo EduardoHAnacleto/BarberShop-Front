@@ -37,7 +37,9 @@ playwright/.cache
 # Lighthouse CI
 .lighthouseci
 
-# Claude Code local settings
-.claude/settings.local.json
+# Claude Code local settings and config — never checked into this repo
+.claude/
+.mcp.json
+CLAUDE.md
 # Added by code-review-graph
 .code-review-graph/
