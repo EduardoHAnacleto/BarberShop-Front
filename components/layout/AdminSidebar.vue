@@ -23,6 +23,7 @@ const nav = [
   { label: 'Workers', to: '/admin/workers', icon: 'users' },
   { label: 'Customers', to: '/admin/customers', icon: 'user' },
   { label: 'Services', to: '/admin/services', icon: 'scissors' },
+  { label: 'Reviews', to: '/admin/reviews', icon: 'star' },
   { label: 'Schedule', to: '/admin/schedule', icon: 'clock' },
   { label: 'Users', to: '/admin/users', icon: 'shield' },
 ]

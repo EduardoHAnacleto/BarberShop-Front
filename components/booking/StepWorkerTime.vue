@@ -2,13 +2,15 @@
 // Step 2 of the booking flow: worker selection, date picker, and time slot grid.
 // Sequentially reveals the date picker after a worker is chosen, then the time
 // grid after a date is chosen (or a closed-day message when applicable).
-import type { Worker } from '~/types'
+import type { Worker, WorkerRatingSummary } from '~/types'
 
 const props = defineProps<{
   // Workers that provide the service selected in step 1.
   workers: Worker[]
   // True while the parent is fetching the workers list.
   loadingWorkers: boolean
+  // Aggregate rating per worker id — absent entries render "No reviews".
+  ratings?: Record<number, WorkerRatingSummary>
   // ID of the currently selected worker (null = not yet chosen).
   selectedWorkerId: number | null
   // ISO date string of the chosen date (empty = not yet chosen).
@@ -87,6 +89,10 @@ const selectedWorker = computed(
           </div>
           <span class="text-sm text-primary font-medium leading-tight">{{ worker.name }}</span>
           <span class="text-xs text-muted">{{ worker.position }}</span>
+          <SharedStarRating
+            :rating="ratings?.[worker.id]?.averageRating ?? 0"
+            :count="ratings?.[worker.id]?.reviewCount ?? 0"
+          />
         </button>
       </div>
     </div>

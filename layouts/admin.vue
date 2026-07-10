@@ -87,6 +87,9 @@ onUnmounted(() => {
       </main>
     </div>
 
+    <!-- Command palette (Ctrl/Cmd+K) — Teleports to body internally. -->
+    <AdminCommandPalette />
+
     <!-- Global toasts — ToastContainer uses Teleport to body internally. -->
     <UiToastContainer />
   </div>

@@ -4,6 +4,7 @@
 // and delete confirmation. See sprint plan S3.2 for the full spec.
 import dayjs from 'dayjs'
 import type { Customer } from '~/types'
+import { toCsv, downloadCsv } from '~/utils/csv'
 
 definePageMeta({ layout: 'admin', middleware: 'admin' })
 
@@ -24,6 +25,18 @@ const filtered = computed(() => {
     (c) => c.name.toLowerCase().includes(q) || c.email.toLowerCase().includes(q),
   )
 })
+
+// Exports the currently filtered customer list to a CSV download.
+function exportCsv(): void {
+  const csv = toCsv(filtered.value, [
+    { header: 'ID', value: (c) => c.id },
+    { header: 'Name', value: (c) => c.name },
+    { header: 'Email', value: (c) => c.email },
+    { header: 'Phone', value: (c) => c.phoneNumber },
+    { header: 'Date of Birth', value: (c) => c.dateOfBirth ?? '' },
+  ])
+  downloadCsv(`customers-${dayjs().format('YYYY-MM-DD')}.csv`, csv)
+}
 
 // ── Sort state ─────────────────────────────────────────────────────────────
 
@@ -167,17 +180,27 @@ onUnmounted(() => {
       </button>
     </div>
 
-    <!-- Search bar -->
+    <!-- Search bar + CSV export -->
     <div class="card">
-      <div class="relative max-w-sm">
-        <SidebarIcon icon="search" class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted" />
-        <input
-          v-model="searchQuery"
-          class="input pl-9"
-          type="search"
-          placeholder="Search name, email…"
-          autocomplete="off"
+      <div class="flex flex-wrap items-center justify-between gap-3">
+        <div class="relative max-w-sm flex-1">
+          <SidebarIcon icon="search" class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted" />
+          <input
+            v-model="searchQuery"
+            class="input pl-9 w-full"
+            type="search"
+            placeholder="Search name, email…"
+            autocomplete="off"
+          >
+        </div>
+        <button
+          type="button"
+          class="btn-outline text-sm shrink-0"
+          :disabled="filtered.length === 0"
+          @click="exportCsv"
         >
+          Export CSV
+        </button>
       </div>
     </div>
 

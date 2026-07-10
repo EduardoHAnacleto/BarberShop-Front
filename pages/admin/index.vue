@@ -2,7 +2,9 @@
 // Admin dashboard. KPI cards, shop status badge, two charts and two tables.
 // See sprint plan S4.2 for the full spec.
 import dayjs from 'dayjs'
-import type { Appointment } from '~/types'
+import type { Appointment, ReportsSummary } from '~/types'
+
+const { api } = useApi()
 
 // Async-loaded chart components so Chart.js is not in the initial bundle.
 const DashboardAppointmentsByDayChart = defineAsyncComponent(
@@ -24,6 +26,14 @@ const scheduleStore = useScheduleStore()
 const { items: appointments, loading: apptLoading, scheduled, ongoing, todayItems } = storeToRefs(appointmentsStore)
 const { items: workers, loading: workersLoading } = storeToRefs(workersStore)
 const { items: customers, loading: customersLoading } = storeToRefs(customersStore)
+
+// ── Analytics (revenue + top performers) ────────────────────────────────────
+
+const reports = ref<ReportsSummary | null>(null)
+
+function fmtCurrency(value: number): string {
+  return `$${value.toFixed(2)}`
+}
 
 // ── Shop open / closed banner ──────────────────────────────────────────────
 
@@ -98,6 +108,13 @@ onMounted(async () => {
   unsubAppointments = appointmentsStore.subscribeRealtime()
   unsubWorkers = workersStore.subscribeRealtime()
   unsubCustomers = customersStore.subscribeRealtime()
+
+  // Best-effort: the analytics panel simply stays hidden on failure.
+  try {
+    reports.value = await api.reports.summary()
+  } catch {
+    // Ignore.
+  }
 })
 
 onUnmounted(() => {
@@ -125,7 +142,16 @@ onUnmounted(() => {
     </div>
 
     <!-- KPI cards -->
-    <div class="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-5 gap-3">
+    <div class="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-3">
+      <div class="card">
+        <p class="text-xs text-muted font-mono uppercase tracking-wider">Revenue (30d)</p>
+        <p v-if="loading" class="mt-2"><UiSkeleton height="h-8" class="w-16" /></p>
+        <p v-else-if="reports" class="mt-1 font-display text-3xl text-gold-400">
+          {{ fmtCurrency(reports.revenueLast30Days) }}
+        </p>
+        <p v-else class="mt-1 font-display text-3xl text-muted">—</p>
+      </div>
+
       <div class="card">
         <p class="text-xs text-muted font-mono uppercase tracking-wider">Today</p>
         <p v-if="loading" class="mt-2"><UiSkeleton height="h-8" class="w-10" /></p>
@@ -175,6 +201,43 @@ onUnmounted(() => {
           <div class="card"><UiSkeleton height="h-64" /></div>
         </template>
       </Suspense>
+    </div>
+
+    <!-- Analytics: top services / workers by revenue -->
+    <div v-if="reports" class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+      <div class="card">
+        <h3 class="font-display text-lg text-primary mb-3">Top services by revenue</h3>
+        <p v-if="reports.topServicesByRevenue.length === 0" class="text-center text-muted py-6 text-sm">
+          No completed appointments yet.
+        </p>
+        <ul v-else class="space-y-2">
+          <li
+            v-for="(s, i) in reports.topServicesByRevenue"
+            :key="s.serviceId"
+            class="flex items-center justify-between text-sm"
+          >
+            <span class="text-secondary"><span class="text-muted font-mono mr-2">{{ i + 1 }}.</span>{{ s.serviceName }}</span>
+            <span class="font-mono text-gold-400">{{ fmtCurrency(s.revenue) }}</span>
+          </li>
+        </ul>
+      </div>
+
+      <div class="card">
+        <h3 class="font-display text-lg text-primary mb-3">Top workers by revenue</h3>
+        <p v-if="reports.topWorkersByRevenue.length === 0" class="text-center text-muted py-6 text-sm">
+          No completed appointments yet.
+        </p>
+        <ul v-else class="space-y-2">
+          <li
+            v-for="(w, i) in reports.topWorkersByRevenue"
+            :key="w.workerId"
+            class="flex items-center justify-between text-sm"
+          >
+            <span class="text-secondary"><span class="text-muted font-mono mr-2">{{ i + 1 }}.</span>{{ w.workerName }}</span>
+            <span class="font-mono text-gold-400">{{ fmtCurrency(w.revenue) }}</span>
+          </li>
+        </ul>
+      </div>
     </div>
 
     <!-- Tables row -->

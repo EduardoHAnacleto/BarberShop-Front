@@ -38,12 +38,14 @@ mockNuxtImport('useState', () => {
 // Mock api methods used by useAuth.
 const mockApiLogin = vi.fn()
 const mockApiGoogle = vi.fn()
+const mockApiLogout = vi.fn()
 mockNuxtImport('useApi', () => {
   return () => ({
     api: {
       auth: {
         login: mockApiLogin,
         google: mockApiGoogle,
+        logout: mockApiLogout,
       },
     },
   })
@@ -88,6 +90,8 @@ beforeEach(() => {
   mockNavigateTo.mockReset()
   mockApiLogin.mockReset()
   mockApiGoogle.mockReset()
+  mockApiLogout.mockReset()
+  mockApiLogout.mockResolvedValue('Logged out')
   mockToastSuccess.mockReset()
   mockToastError.mockReset()
 })
@@ -219,7 +223,7 @@ describe('useAuth — computed flags', () => {
 })
 
 describe('useAuth — logout()', () => {
-  it('clears state.token, clears cookie, and calls navigateTo("/login")', async () => {
+  it('revokes the token server-side, clears state and cookie, and navigates to /login', async () => {
     // First log in to set up state.
     const token = makeToken({})
     mockApiLogin.mockResolvedValueOnce({ token, email: 'a@b.com', userRole: 'Admin' })
@@ -228,10 +232,35 @@ describe('useAuth — logout()', () => {
     await login('a@b.com', 'pw')
     expect(isLoggedIn.value).toBe(true)
 
-    logout()
+    await logout()
+
+    expect(mockApiLogout).toHaveBeenCalled()
+    expect(isLoggedIn.value).toBe(false)
+    expect(cookieStore['bs_token']).toBeNull()
+    expect(mockNavigateTo).toHaveBeenCalledWith('/login')
+  })
+
+  it('still logs out locally when the revocation API call fails', async () => {
+    const token = makeToken({})
+    mockApiLogin.mockResolvedValueOnce({ token, email: 'a@b.com', userRole: 'Admin' })
+    mockApiLogout.mockRejectedValueOnce(new Error('network down'))
+
+    const { login, logout, isLoggedIn } = useAuth()
+    await login('a@b.com', 'pw')
+
+    await logout()
 
     expect(isLoggedIn.value).toBe(false)
     expect(cookieStore['bs_token']).toBeNull()
+    expect(mockNavigateTo).toHaveBeenCalledWith('/login')
+  })
+
+  it('skips the revocation call when no session is active', async () => {
+    const { logout } = useAuth()
+
+    await logout()
+
+    expect(mockApiLogout).not.toHaveBeenCalled()
     expect(mockNavigateTo).toHaveBeenCalledWith('/login')
   })
 })

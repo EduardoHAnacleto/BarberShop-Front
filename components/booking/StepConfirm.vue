@@ -19,14 +19,21 @@ const props = defineProps<{
 }>()
 
 const emit = defineEmits<{
-  // Fired with customer details when the form is submitted and valid.
-  (e: 'confirm', payload: { name: string; email: string; phone: string }): void
+  // Fired with customer details (and, when the repeat toggle is on, the
+  // number of weekly occurrences to book) when the form is submitted and valid.
+  (e: 'confirm', payload: { name: string; email: string; phone: string; repeatWeeks?: number }): void
 }>()
 
 // Customer form fields — seeded from the logged-in user's profile when available.
 const name = ref(props.prefill?.name ?? '')
 const email = ref(props.prefill?.email ?? '')
 const phone = ref(props.prefill?.phone ?? '')
+
+// ── Repeat weekly ────────────────────────────────────────────────────────────
+
+const repeatWeekly = ref(false)
+// Total occurrences including the first booking; matches the backend's 1–12 cap.
+const repeatWeeks = ref(4)
 
 // Simple client-side validation: name and email are required, email must be valid.
 const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
@@ -55,7 +62,12 @@ function fmtDuration(minutes: number): string {
 
 function submit(): void {
   if (!isValid.value) return
-  emit('confirm', { name: name.value.trim(), email: email.value.trim(), phone: phone.value.trim() })
+  emit('confirm', {
+    name: name.value.trim(),
+    email: email.value.trim(),
+    phone: phone.value.trim(),
+    repeatWeeks: repeatWeekly.value ? repeatWeeks.value : undefined,
+  })
 }
 </script>
 
@@ -93,6 +105,33 @@ function submit(): void {
         <div>
           <p class="text-xs text-muted uppercase tracking-wider font-mono mb-0.5">Time</p>
           <p class="text-primary font-mono">{{ selectedTime }}</p>
+        </div>
+      </div>
+
+      <!-- Repeat weekly. -->
+      <div class="pt-3 border-t border-subtle">
+        <label class="flex items-center gap-2 text-sm text-secondary cursor-pointer">
+          <input
+            id="repeat-weekly"
+            v-model="repeatWeekly"
+            type="checkbox"
+            autocomplete="off"
+            class="w-4 h-4 rounded border-border bg-surface-elev text-gold-500
+                   focus:ring-gold-500/40 cursor-pointer"
+          >
+          Repeat this appointment weekly
+        </label>
+        <div v-if="repeatWeekly" class="mt-2 flex items-center gap-2">
+          <label for="repeat-weeks" class="text-sm text-secondary">For</label>
+          <input
+            id="repeat-weeks"
+            v-model.number="repeatWeeks"
+            type="number"
+            min="2"
+            max="12"
+            class="input w-20"
+          >
+          <span class="text-sm text-secondary">weeks (same day &amp; time)</span>
         </div>
       </div>
     </div>

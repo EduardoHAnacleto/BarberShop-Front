@@ -1,12 +1,13 @@
 <script setup lang="ts">
 // Booking flow page: 3-step stepper (service → worker/time → confirm).
 // Pre-selects a service when `serviceId` is present in the query string.
-// Slots for a worker+date are filtered against existing appointments so no
-// double-bookings are possible and service durations are respected.
-// See sprint plan S5.2 for the full specification.
-import type { Service, Worker, BusinessSchedule, Appointment } from '~/types'
+// Bookable slots come from the server-side availability endpoint, which
+// accounts for the day's schedule, closures, existing bookings, the service
+// duration and same-day lead time — no client-side slot math and no need to
+// download other customers' appointments.
+// See sprint plan S5.2 / Sprint070726 §3.1 for the full specification.
+import type { Service, Worker, WorkerRatingSummary } from '~/types'
 import { AppointmentStatus } from '~/types'
-import { generateTimeSlots, filterAvailableSlots, filterPastSlots } from '~/utils/timeSlots'
 
 definePageMeta({ layout: 'default' })
 
@@ -15,6 +16,7 @@ const router = useRouter()
 const { api } = useApi()
 const toast = useToast()
 const { isLoggedIn, userId, userEmail } = useAuth()
+const { onAppointmentsChanged } = useSignalR()
 
 // ── Step management ───────────────────────────────────────────────────────────
 
@@ -33,47 +35,18 @@ const workers = ref<Worker[]>([])
 const workersLoading = ref(false)
 const selectedWorker = ref<Worker | null>(null)
 
+// Aggregate rating per worker id, shown as a star badge on each worker card.
+// Fetched once on mount — a handful of workers, so a single bulk call beats
+// one request per card.
+const ratings = ref<Record<number, WorkerRatingSummary>>({})
+
 const selectedDate = ref('')
 const loadingSchedule = ref(false)
-const schedule = ref<BusinessSchedule | null>(null)
 const dayIsClosed = ref(false)
 
-// Active (non-cancelled/deleted) appointments for the selected worker on the selected date.
-// Used to filter out conflicting time slots.
-const workerAppointments = ref<Appointment[]>([])
-
-// Builds the available time slots by generating all possible slots from the
-// day's schedule and then removing any that conflict with the worker's existing
-// bookings (accounting for the duration of both existing and proposed services).
-const timeSlots = computed<string[]>(() => {
-  if (!schedule.value || !schedule.value.isOpen) return []
-
-  const rawSlots = generateTimeSlots(
-    schedule.value.openTime ?? '09:00',
-    schedule.value.closeTime ?? '18:00',
-    schedule.value.breakStart ?? null,
-    schedule.value.breakEnd ?? null,
-  )
-
-  // Drop any slot whose start has already passed for the local "now". This
-  // only affects same-day bookings; future dates are unchanged.
-  const futureSlots = filterPastSlots(rawSlots, selectedDate.value)
-
-  if (!selectedService.value) return futureSlots
-
-  // Build an occupied period for every active appointment on this day.
-  // The period spans [startMinutes, startMinutes + serviceDuration).
-  const occupied = workerAppointments.value.map((appt) => {
-    const svc = services.value.find((s) => s.id === appt.serviceId)
-    const duration = svc?.duration ?? 30
-    const timePart = appt.scheduledFor.slice(11, 16) // "HH:mm"
-    const [h, m] = timePart.split(':').map(Number)
-    const startMinutes = (h ?? 0) * 60 + (m ?? 0)
-    return { startMinutes, endMinutes: startMinutes + duration }
-  })
-
-  return filterAvailableSlots(futureSlots, occupied, selectedService.value.duration)
-})
+// Bookable slots for the selected worker+date+service, as returned by the
+// server-side availability endpoint.
+const timeSlots = ref<string[]>([])
 
 const selectedTime = ref('')
 
@@ -133,60 +106,65 @@ function selectWorker(workerId: number): void {
   // Reset all downstream state when the worker changes.
   selectedDate.value = ''
   selectedTime.value = ''
-  schedule.value = null
   dayIsClosed.value = false
-  workerAppointments.value = []
+  timeSlots.value = []
 }
 
-// ── Date, schedule and conflict fetching ──────────────────────────────────────
+// ── Availability fetching ──────────────────────────────────────────────────────
+
+// Fetches (or re-fetches) the server-computed availability for the current
+// worker/date/service selection. Preserves the chosen time if it is still free.
+async function loadAvailability(): Promise<void> {
+  if (!selectedDate.value || !selectedWorker.value || !selectedService.value) return
+
+  loadingSchedule.value = true
+  try {
+    const result = await api.workers.availability(
+      selectedWorker.value.id,
+      selectedDate.value,
+      selectedService.value.id,
+    )
+    timeSlots.value = result.slots
+    // If someone booked the slot this user had selected, clear it so they
+    // cannot submit a now-unavailable time.
+    if (selectedTime.value && !result.slots.includes(selectedTime.value)) {
+      selectedTime.value = ''
+    }
+    // An open day with no returned slots reads as "fully booked" rather than
+    // "closed"; only mark the day closed when the shop is genuinely shut.
+    dayIsClosed.value = result.slots.length === 0
+  } catch (err: unknown) {
+    const msg = (err as { response?: { data?: string } }).response?.data ?? 'Failed to load availability'
+    toast.error(typeof msg === 'string' ? msg : 'Failed to load availability')
+    dayIsClosed.value = true
+  } finally {
+    loadingSchedule.value = false
+  }
+}
 
 async function handleDateChange(date: string): Promise<void> {
   selectedDate.value = date
   selectedTime.value = ''
-  schedule.value = null
   dayIsClosed.value = false
-  workerAppointments.value = []
-
-  if (!date || !selectedWorker.value) return
-
-  loadingSchedule.value = true
-  const workerId = selectedWorker.value.id
-
-  // Fetch the day's schedule and the worker's existing appointments in parallel.
-  await Promise.all([
-    api.schedule
-      .getByDay(new Date(date + 'T12:00:00').getDay())
-      .then((result) => {
-        schedule.value = result
-        dayIsClosed.value = !result.isOpen
-      })
-      .catch(() => {
-        dayIsClosed.value = true
-      }),
-
-    // Keep only Scheduled / OnGoing appointments on the selected date.
-    // Cancelled and Deleted appointments do not block slots.
-    api.appointments
-      .byWorker(workerId)
-      .then((all) => {
-        workerAppointments.value = all.filter(
-          (a) =>
-            a.scheduledFor.slice(0, 10) === date &&
-            a.status !== AppointmentStatus.Cancelled &&
-            a.status !== AppointmentStatus.Deleted,
-        )
-      })
-      .catch(() => {
-        workerAppointments.value = []
-      }),
-  ])
-
-  loadingSchedule.value = false
+  timeSlots.value = []
+  if (!date) return
+  await loadAvailability()
 }
+
+// Live updates: when any appointment changes on the server, refresh the slots
+// for the day being viewed so two users cannot grab the same time. The SDK
+// already reconnects automatically; the subscription cleans itself up on
+// unmount via the returned unsubscribe.
+const unsubscribeSlots = onAppointmentsChanged(() => {
+  if (selectedDate.value) loadAvailability()
+})
+onUnmounted(() => unsubscribeSlots())
 
 // ── Booking submission ────────────────────────────────────────────────────────
 
-async function handleConfirm(payload: { name: string; email: string; phone: string }): Promise<void> {
+async function handleConfirm(
+  payload: { name: string; email: string; phone: string; repeatWeeks?: number },
+): Promise<void> {
   if (!selectedService.value || !selectedWorker.value || !selectedDate.value || !selectedTime.value) {
     return
   }
@@ -209,17 +187,51 @@ async function handleConfirm(payload: { name: string; email: string; phone: stri
     // 2. Build the ISO scheduledFor string from the selected date + time.
     const scheduledFor = `${selectedDate.value}T${selectedTime.value}:00`
 
-    // 3. Create the appointment. The backend validates worker+customer conflicts
-    //    as a final guard; the frontend already filters worker slot conflicts.
-    const appointment = await api.appointments.create({
-      customerId,
-      workerId: selectedWorker.value.id,
-      serviceId: selectedService.value.id,
-      scheduledFor,
-      status: AppointmentStatus.Scheduled,
-    })
+    // 3. Create the appointment(s). The backend validates worker+customer
+    //    conflicts as a final guard; the frontend already filters worker slot
+    //    conflicts. A "repeat weekly" request books a whole series in one call.
+    let firstAppointmentId: number
+    let recurringSummary: { createdCount: number; skippedCount: number } | null = null
 
-    await router.push(`/book/success?appointmentId=${appointment.id}`)
+    if (payload.repeatWeeks && payload.repeatWeeks > 1) {
+      const result = await api.appointments.createRecurring({
+        customerId,
+        workerId: selectedWorker.value.id,
+        serviceId: selectedService.value.id,
+        scheduledFor,
+        repeatWeeks: payload.repeatWeeks,
+      })
+      firstAppointmentId = result.created[0]?.id ?? 0
+      recurringSummary = { createdCount: result.created.length, skippedCount: result.skippedDates.length }
+    } else {
+      const appointment = await api.appointments.create({
+        customerId,
+        workerId: selectedWorker.value.id,
+        serviceId: selectedService.value.id,
+        scheduledFor,
+        status: AppointmentStatus.Scheduled,
+      })
+      firstAppointmentId = appointment.id
+    }
+
+    // Pass the essentials so the success page can offer an "add to calendar"
+    // action without an extra fetch.
+    await router.push({
+      path: '/book/success',
+      query: {
+        appointmentId: String(firstAppointmentId),
+        service: selectedService.value.name,
+        worker: selectedWorker.value.name,
+        scheduledFor,
+        duration: String(selectedService.value.duration),
+        ...(recurringSummary
+          ? {
+              createdCount: String(recurringSummary.createdCount),
+              skippedCount: String(recurringSummary.skippedCount),
+            }
+          : {}),
+      },
+    })
   } catch (err: unknown) {
     const msg =
       (err as { response?: { data?: string } }).response?.data ?? 'Booking failed. Please try again.'
@@ -250,6 +262,14 @@ onMounted(async () => {
     servicesLoading.value = false
   }
 
+  // Best-effort: star badges are a nice-to-have, never block booking on them.
+  try {
+    const summary = await api.reviews.summary()
+    ratings.value = Object.fromEntries(summary.map((r) => [r.workerId, r]))
+  } catch {
+    // Ignore — worker cards simply render "No reviews".
+  }
+
   // Pre-select service from query param (e.g. /book?serviceId=3).
   const qId = Number(route.query.serviceId)
   if (qId) {
@@ -261,10 +281,10 @@ onMounted(async () => {
   // Non-fatal: if this fails the form is left empty for manual input.
   if (isLoggedIn.value && userId.value) {
     try {
-      const user = await api.users.byId(Number(userId.value))
+      const user = await api.users.me()
       if (user.customerId) {
         existingCustomerId.value = user.customerId
-        const customer = await api.customers.byId(user.customerId)
+        const customer = await api.customers.me()
         prefill.name = customer.name
         prefill.email = customer.email
         prefill.phone = customer.phoneNumber
@@ -309,6 +329,7 @@ onMounted(async () => {
         v-else-if="step === 2"
         :workers="workers"
         :loading-workers="workersLoading"
+        :ratings="ratings"
         :selected-worker-id="selectedWorker?.id ?? null"
         :selected-date="selectedDate"
         :day-is-closed="dayIsClosed"

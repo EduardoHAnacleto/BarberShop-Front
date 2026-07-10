@@ -35,18 +35,17 @@ export function useAuth() {
     userId: null,
   }))
 
-  // Default cookie lifetime — 24 h. Seconds in 30 days — lifetime of the
-  // "Remember me" cookie, matching the long-lived JWT the API issues when
-  // rememberMe=true.
-  const DEFAULT_MAX_AGE = 86_400
-  const REMEMBER_ME_MAX_AGE = 60 * 60 * 24 * 30
+  // The JWT stays valid until the user logs out or their credentials change
+  // (server-side SecurityStamp revocation), so the cookie only controls how
+  // long the browser keeps the session: session-scoped by default, one year
+  // when "Remember me" is checked (matching the token's own expiry).
+  const REMEMBER_ME_MAX_AGE = 60 * 60 * 24 * 365
 
   // Single source of truth for the bs_token cookie binding. `secure` is
   // enabled in production only; dev runs over plain HTTP on localhost and
-  // browsers refuse to set Secure cookies on non-HTTPS origins. maxAge is
-  // parametrized so remember-me sessions can request a 30-day lifetime
-  // without creating a second, out-of-sync ref bound to the same cookie name.
-  function tokenCookie(maxAge: number = DEFAULT_MAX_AGE) {
+  // browsers refuse to set Secure cookies on non-HTTPS origins. maxAge
+  // undefined creates a session cookie that dies when the browser closes.
+  function tokenCookie(maxAge?: number) {
     return useCookie<string | null>('bs_token', {
       maxAge,
       secure: !import.meta.dev,
@@ -79,7 +78,7 @@ export function useAuth() {
       userId: decoded.sub,
     }
 
-    tokenCookie(rememberMe ? REMEMBER_ME_MAX_AGE : DEFAULT_MAX_AGE).value = token
+    tokenCookie(rememberMe ? REMEMBER_ME_MAX_AGE : undefined).value = token
   }
 
   // Re-hydrate from an existing cookie when the client first loads and the
@@ -131,11 +130,22 @@ export function useAuth() {
     }
   }
 
-  // Clears all auth state and redirects to the login page.
-  // Also tells Google to skip auto-select on the next visit so the user can
-  // pick a different account (without this, One Tap would immediately re-sign
-  // them in with the same Google account they just logged out from).
-  function logout(): void {
+  // Revokes the session server-side (SecurityStamp rotation kills every JWT
+  // issued for this user), then clears all local auth state and redirects to
+  // the login page. Also tells Google to skip auto-select on the next visit
+  // so the user can pick a different account (without this, One Tap would
+  // immediately re-sign them in with the same Google account they just
+  // logged out from).
+  async function logout(): Promise<void> {
+    // Best-effort: the call must happen while the cookie still holds the
+    // token. A failure (offline, token already revoked/expired) must never
+    // block the local logout.
+    try {
+      if (state.value.token) await api.auth.logout()
+    } catch {
+      // Local logout proceeds regardless.
+    }
+
     state.value = { token: null, email: null, role: null, userId: null }
     tokenCookie().value = null
     if (import.meta.client) {

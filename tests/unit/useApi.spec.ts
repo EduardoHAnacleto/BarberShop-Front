@@ -53,6 +53,89 @@ const server = setupServer(
     const body = await request.json() as { email: string }
     return HttpResponse.json({ token: 'jwt-token', email: body.email, userRole: 'Admin' })
   }),
+
+  // Own-profile endpoint used by the client/worker portals.
+  http.get('http://localhost:8080/users/me', ({ request }) => {
+    lastAuthHeader = request.headers.get('Authorization')
+    return HttpResponse.json({ id: 6, email: 'me@b.com', userRole: 0, customerId: 1, workerId: null })
+  }),
+
+  // Own loyalty progress.
+  http.get('http://localhost:8080/api/customers/me/loyalty', () =>
+    HttpResponse.json({ completedVisits: 3, visitsForReward: 10, visitsUntilReward: 7, rewardReady: false })),
+
+  // Worker status transition endpoint.
+  http.patch('http://localhost:8080/api/appointments/:id/status', async ({ request, params }) => {
+    const body = await request.json() as { status: number }
+    return HttpResponse.json({ id: Number(params.id), status: body.status })
+  }),
+
+  // Recurring booking series.
+  http.post('http://localhost:8080/api/appointments/recurring', async ({ request }) => {
+    const body = await request.json() as { scheduledFor: string; repeatWeeks: number }
+    return HttpResponse.json({
+      recurrenceId: 'a1b2c3d4-0000-0000-0000-000000000000',
+      created: [{ id: 1, scheduledFor: body.scheduledFor }, { id: 2, scheduledFor: body.scheduledFor }],
+      skippedDates: [],
+    })
+  }),
+
+  // Self-service password change.
+  http.post('http://localhost:8080/api/auth/change-password', async ({ request }) => {
+    const body = await request.json() as { currentPassword: string; newPassword: string }
+    if (body.currentPassword === 'wrong') {
+      return HttpResponse.json('Current password is incorrect', { status: 400 })
+    }
+    return HttpResponse.json('Password changed')
+  }),
+
+  // Forgot / reset password.
+  http.post('http://localhost:8080/api/auth/forgot-password', () =>
+    HttpResponse.json('If that email is registered, a reset link has been sent.')),
+  http.post('http://localhost:8080/api/auth/reset-password', async ({ request }) => {
+    const body = await request.json() as { token: string; newPassword: string }
+    if (body.token !== 'valid-token') {
+      return HttpResponse.json('Invalid or expired reset link', { status: 400 })
+    }
+    return HttpResponse.json('Password reset successfully. Please sign in.')
+  }),
+
+  // Reviews.
+  http.post('http://localhost:8080/api/reviews', async ({ request }) => {
+    const body = await request.json() as { appointmentId: number; rating: number }
+    return HttpResponse.json({
+      id: 1,
+      appointmentId: body.appointmentId,
+      customerId: 1,
+      customerName: 'Emily Johnson',
+      workerId: 2,
+      workerName: 'James Carter',
+      serviceName: 'Haircut',
+      rating: body.rating,
+      comment: '',
+      createdAt: '2026-07-01T10:00:00Z',
+    })
+  }),
+  http.get('http://localhost:8080/api/reviews/worker/:workerId', ({ params }) =>
+    HttpResponse.json([{ id: 1, workerId: Number(params.workerId), rating: 5 }])),
+  http.get('http://localhost:8080/api/reviews/summary', () =>
+    HttpResponse.json([{ workerId: 2, averageRating: 4.5, reviewCount: 3 }])),
+  http.get('http://localhost:8080/api/reviews/mine', () => HttpResponse.json([])),
+  http.get('http://localhost:8080/api/reviews/all', () =>
+    HttpResponse.json([{ id: 1, workerId: 2, rating: 5 }])),
+  http.delete('http://localhost:8080/api/reviews/:id', () => new HttpResponse(null, { status: 204 })),
+
+  // Admin analytics.
+  http.get('http://localhost:8080/api/reports/summary', () =>
+    HttpResponse.json({
+      totalRevenue: 500,
+      revenueLast30Days: 200,
+      completedCount: 20,
+      cancelledCount: 2,
+      cancellationRate: 0.1,
+      topServicesByRevenue: [{ serviceId: 1, serviceName: 'Haircut', revenue: 200, completedCount: 8 }],
+      topWorkersByRevenue: [{ workerId: 2, workerName: 'James Carter', revenue: 150, completedCount: 6 }],
+    })),
 )
 
 beforeAll(() => server.listen({ onUnhandledRequest: 'error' }))
@@ -125,5 +208,127 @@ describe('generic helpers', () => {
     const result = await api.auth.login({ email: 'a@b.com', password: 'pw' })
     expect(result.token).toBe('jwt-token')
     expect(result.email).toBe('a@b.com')
+  })
+})
+
+// ── users.me() — own-profile resolution for the /my and /worker portals ───────
+
+describe('users.me()', () => {
+  it('GETs /users/me with the bearer token and returns the own user record', async () => {
+    mockCookieValue = 'jwt'
+    const me = await api.users.me()
+
+    expect(lastAuthHeader).toBe('Bearer jwt')
+    expect(me.id).toBe(6)
+    expect(me.customerId).toBe(1)
+  })
+})
+
+describe('customers.myLoyalty()', () => {
+  it('GETs the own loyalty progress', async () => {
+    const status = await api.customers.myLoyalty()
+    expect(status.completedVisits).toBe(3)
+    expect(status.visitsUntilReward).toBe(7)
+    expect(status.rewardReady).toBe(false)
+  })
+})
+
+describe('appointments.changeStatus()', () => {
+  it('PATCHes the status endpoint and returns the updated appointment', async () => {
+    // 2 = Completed in AppointmentStatus.
+    const updated = await api.appointments.changeStatus(42, 2)
+
+    expect(updated.id).toBe(42)
+    expect(updated.status).toBe(2)
+  })
+})
+
+describe('appointments.createRecurring()', () => {
+  it('POSTs the series request and returns created + skipped occurrences', async () => {
+    const result = await api.appointments.createRecurring({
+      customerId: 1,
+      workerId: 2,
+      serviceId: 3,
+      scheduledFor: '2026-08-01T14:00:00',
+      repeatWeeks: 4,
+    })
+
+    expect(result.recurrenceId).toBe('a1b2c3d4-0000-0000-0000-000000000000')
+    expect(result.created).toHaveLength(2)
+    expect(result.skippedDates).toEqual([])
+  })
+})
+
+describe('auth.changePassword()', () => {
+  it('POSTs current and new passwords and resolves on success', async () => {
+    const res = await api.auth.changePassword('OldPass@123', 'NewPass@456')
+    expect(res).toBe('Password changed')
+  })
+
+  it('rejects with the API error when the current password is wrong', async () => {
+    await expect(api.auth.changePassword('wrong', 'NewPass@456')).rejects.toMatchObject({
+      response: { status: 400 },
+    })
+  })
+})
+
+describe('auth.forgotPassword() / auth.resetPassword()', () => {
+  it('forgotPassword() POSTs the email and resolves with the generic message', async () => {
+    const res = await api.auth.forgotPassword('someone@example.com')
+    expect(res).toBe('If that email is registered, a reset link has been sent.')
+  })
+
+  it('resetPassword() POSTs the token and new password and resolves on success', async () => {
+    const res = await api.auth.resetPassword('valid-token', 'BrandNewPass@1')
+    expect(res).toBe('Password reset successfully. Please sign in.')
+  })
+
+  it('resetPassword() rejects with the API error for an invalid token', async () => {
+    await expect(api.auth.resetPassword('bad-token', 'BrandNewPass@1')).rejects.toMatchObject({
+      response: { status: 400 },
+    })
+  })
+})
+
+describe('api.reviews', () => {
+  it('create() POSTs the review and returns the created record', async () => {
+    const review = await api.reviews.create({ appointmentId: 42, rating: 5, comment: 'Great!' })
+    expect(review.appointmentId).toBe(42)
+    expect(review.rating).toBe(5)
+  })
+
+  it('byWorker() GETs the reviews for a specific worker', async () => {
+    const reviews = await api.reviews.byWorker(2)
+    expect(reviews).toHaveLength(1)
+    expect(reviews[0]?.workerId).toBe(2)
+  })
+
+  it('summary() GETs the bulk per-worker rating summary', async () => {
+    const summary = await api.reviews.summary()
+    expect(summary).toEqual([{ workerId: 2, averageRating: 4.5, reviewCount: 3 }])
+  })
+
+  it('mine() GETs the caller\'s own reviews', async () => {
+    const mine = await api.reviews.mine()
+    expect(mine).toEqual([])
+  })
+
+  it('all() GETs every review for admin moderation', async () => {
+    const all = await api.reviews.all()
+    expect(all).toHaveLength(1)
+  })
+
+  it('delete() removes a review by id', async () => {
+    // A 204 No Content body comes back as '' through axios, not null.
+    await expect(api.reviews.delete(1)).resolves.toBe('')
+  })
+})
+
+describe('api.reports', () => {
+  it('summary() GETs the revenue and top-performer rollup', async () => {
+    const summary = await api.reports.summary()
+    expect(summary.revenueLast30Days).toBe(200)
+    expect(summary.topServicesByRevenue[0]?.serviceName).toBe('Haircut')
+    expect(summary.topWorkersByRevenue[0]?.workerName).toBe('James Carter')
   })
 })

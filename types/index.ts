@@ -83,6 +83,8 @@ export interface Appointment {
   extraDetails: string
   /** ISO 8601 date-time string when the record was created. */
   createdAt: string
+  /** Shared by every occurrence of a recurring booking; absent for one-off appointments. */
+  recurrenceId?: string
 }
 
 // Payload sent to the API when creating or updating an appointment.
@@ -94,6 +96,27 @@ export interface AppointmentRequest {
   scheduledFor: string
   status: AppointmentStatus
   extraDetails?: string
+}
+
+// Payload for booking a weekly-recurring series in one request.
+export interface RecurringAppointmentRequest {
+  workerId: number
+  customerId: number
+  serviceId: number
+  /** ISO 8601 date-time string of the first occurrence. */
+  scheduledFor: string
+  extraDetails?: string
+  /** Total number of occurrences to attempt, including the first (1–12). */
+  repeatWeeks: number
+}
+
+// Outcome of a recurring booking: what was actually created vs. skipped
+// because that week's slot was already taken.
+export interface RecurringAppointmentResult {
+  recurrenceId: string
+  created: Appointment[]
+  /** ISO 8601 date-time strings of occurrences that conflicted and were skipped. */
+  skippedDates: string[]
 }
 
 // A user account that can authenticate and optionally be linked to a customer
@@ -145,6 +168,82 @@ export interface WorkingHours {
   closedUntil?: string
   reason: string
   closureType: ClosureType
+}
+
+// Server-computed booking availability for a worker on a given day.
+export interface AvailabilityResponse {
+  workerId: number
+  serviceId: number
+  /** Requested day, yyyy-MM-dd. */
+  date: string
+  /** Bookable start times ("HH:mm"), already filtered server-side. */
+  slots: string[]
+}
+
+// A customer's rating of a completed appointment.
+export interface Review {
+  id: number
+  appointmentId: number
+  customerId: number
+  customerName: string
+  workerId: number
+  workerName: string
+  serviceName: string
+  /** 1–5. */
+  rating: number
+  comment: string
+  /** ISO 8601 date-time string. */
+  createdAt: string
+}
+
+// Payload sent to POST /api/reviews.
+export interface ReviewRequest {
+  appointmentId: number
+  rating: number
+  comment?: string
+}
+
+// Aggregate rating for one worker, used to render star badges in bulk.
+export interface WorkerRatingSummary {
+  workerId: number
+  averageRating: number
+  reviewCount: number
+}
+
+// A customer's progress toward their next loyalty reward.
+export interface LoyaltyStatus {
+  completedVisits: number
+  visitsForReward: number
+  visitsUntilReward: number
+  rewardReady: boolean
+}
+
+// Revenue earned by a single service, part of ReportsSummary.
+export interface ServiceRevenue {
+  serviceId: number
+  serviceName: string
+  revenue: number
+  completedCount: number
+}
+
+// Revenue earned by a single worker, part of ReportsSummary.
+export interface WorkerRevenue {
+  workerId: number
+  workerName: string
+  revenue: number
+  completedCount: number
+}
+
+// Revenue and volume rollup for the admin dashboard's analytics panel.
+export interface ReportsSummary {
+  totalRevenue: number
+  revenueLast30Days: number
+  completedCount: number
+  cancelledCount: number
+  /** 0–1 fraction; multiply by 100 for a percentage. */
+  cancellationRate: number
+  topServicesByRevenue: ServiceRevenue[]
+  topWorkersByRevenue: WorkerRevenue[]
 }
 
 // ─── Auth ─────────────────────────────────────────────────────────────────────

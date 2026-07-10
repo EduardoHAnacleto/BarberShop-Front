@@ -63,15 +63,44 @@ const cancelled = computed(() =>
     .sort((a, b) => byProximityToNow(a, b, 'desc')),
 )
 
+// ── Worker actions (start / complete / no-show) ─────────────────────────────────
+
+// ID of the appointment whose status change is currently in flight.
+const updatingId = ref<number | null>(null)
+
+// Transitions an appointment to a new status via the worker-scoped endpoint
+// and reflects the change locally so the columns re-sort immediately.
+async function changeStatus(id: number, status: AppointmentStatus, label: string): Promise<void> {
+  updatingId.value = id
+  try {
+    await api.appointments.changeStatus(id, status)
+    const appt = appointments.value.find((a) => a.id === id)
+    if (appt) appt.status = status
+    toast.success(label)
+  } catch (err: unknown) {
+    const msg = (err as { response?: { data?: string } }).response?.data ?? 'Could not update appointment'
+    toast.error(typeof msg === 'string' ? msg : 'Could not update appointment')
+  } finally {
+    updatingId.value = null
+  }
+}
+
+const startAppointment = (id: number) =>
+  changeStatus(id, AppointmentStatus.OnGoing, 'Appointment started')
+const completeAppointment = (id: number) =>
+  changeStatus(id, AppointmentStatus.Completed, 'Appointment completed')
+const noShowAppointment = (id: number) =>
+  changeStatus(id, AppointmentStatus.Cancelled, 'Marked as no-show')
+
 // ── Data loading ──────────────────────────────────────────────────────────────
 
 onMounted(async () => {
-  const uid = Number(userId.value)
-  if (!uid) { pageLoading.value = false; noProfile.value = true; return }
+  if (!userId.value) { pageLoading.value = false; noProfile.value = true; return }
 
   try {
-    // Resolve the workerId linked to this user account.
-    const user = await api.users.byId(uid)
+    // Resolve the workerId linked to this account via /users/me — the
+    // admin-only /users/{id} endpoint 403s for workers.
+    const user = await api.users.me()
     if (!user.workerId) { noProfile.value = true; return }
 
     appointments.value = await api.appointments.byWorker(user.workerId)
@@ -129,7 +158,26 @@ onMounted(async () => {
                   :appointment="appt"
                   :can-cancel="false"
                   :cancelling="false"
-                />
+                >
+                  <template #actions>
+                    <button
+                      type="button"
+                      class="btn-primary text-xs py-1 px-3 disabled:opacity-50"
+                      :disabled="updatingId === appt.id"
+                      @click="startAppointment(appt.id)"
+                    >
+                      Start
+                    </button>
+                    <button
+                      type="button"
+                      class="text-xs py-1 px-3 rounded text-red-400 hover:text-red-300 disabled:opacity-50"
+                      :disabled="updatingId === appt.id"
+                      @click="noShowAppointment(appt.id)"
+                    >
+                      No-show
+                    </button>
+                  </template>
+                </ClientAppointmentCard>
               </div>
             </section>
 
@@ -147,7 +195,18 @@ onMounted(async () => {
                   :appointment="appt"
                   :can-cancel="false"
                   :cancelling="false"
-                />
+                >
+                  <template #actions>
+                    <button
+                      type="button"
+                      class="btn-primary text-xs py-1 px-3 disabled:opacity-50"
+                      :disabled="updatingId === appt.id"
+                      @click="completeAppointment(appt.id)"
+                    >
+                      Complete
+                    </button>
+                  </template>
+                </ClientAppointmentCard>
               </div>
             </section>
           </div>

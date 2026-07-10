@@ -175,18 +175,23 @@ onMounted(() => {
         </div>
 
         <!-- Remember-me checkbox — opts into a long-lived 30-day cookie. -->
-        <div class="flex items-center gap-2">
-          <input
-            id="remember-me"
-            v-model="rememberMe"
-            type="checkbox"
-            autocomplete="off"
-            class="w-4 h-4 rounded border-border bg-surface-elev text-gold-500
-                   focus:ring-gold-500/40 cursor-pointer"
-          >
-          <label for="remember-me" class="text-sm text-secondary cursor-pointer select-none">
-            Remember me
-          </label>
+        <div class="flex items-center justify-between">
+          <div class="flex items-center gap-2">
+            <input
+              id="remember-me"
+              v-model="rememberMe"
+              type="checkbox"
+              autocomplete="off"
+              class="w-4 h-4 rounded border-border bg-surface-elev text-gold-500
+                     focus:ring-gold-500/40 cursor-pointer"
+            >
+            <label for="remember-me" class="text-sm text-secondary cursor-pointer select-none">
+              Remember me
+            </label>
+          </div>
+          <NuxtLink to="/forgot-password" class="text-sm text-gold-400 hover:underline">
+            Forgot password?
+          </NuxtLink>
         </div>
 
         <!-- Submit button — shows a spinner while loading. -->

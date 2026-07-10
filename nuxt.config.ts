@@ -108,6 +108,17 @@ export default defineNuxtConfig({
     strict: true,
   },
 
+  // Strip the /dev design-system sandbox from production builds so it can never
+  // be reached in a deployed environment (Sprint070726 §4.7).
+  hooks: {
+    'pages:extend'(pages) {
+      if (!import.meta.dev) {
+        const devIndex = pages.findIndex((p) => p.path === '/dev')
+        if (devIndex !== -1) pages.splice(devIndex, 1)
+      }
+    },
+  },
+
   // ── Sentry (S8.4) ──────────────────────────────────────────────────────────
   // Build-time Sentry module options. Runtime config (DSN, integrations) lives
   // in sentry.client.config.ts which is auto-loaded by @sentry/nuxt/module.

@@ -17,6 +17,14 @@ import type {
   UserRequest,
   BusinessSchedule,
   WorkingHours,
+  AvailabilityResponse,
+  Review,
+  ReviewRequest,
+  WorkerRatingSummary,
+  LoyaltyStatus,
+  ReportsSummary,
+  RecurringAppointmentRequest,
+  RecurringAppointmentResult,
 } from '~/types'
 
 // Module-level singleton — guaranteed single instance per process.
@@ -93,6 +101,12 @@ export function useApi() {
     return response.data
   }
 
+  // Sends a PATCH request and returns the typed response body.
+  async function patch<T>(url: string, body?: unknown): Promise<T> {
+    const response = await ax.patch<T>(url, body)
+    return response.data
+  }
+
   // Sends a DELETE request and returns the typed response body.
   async function del<T>(url: string): Promise<T> {
     const response = await ax.delete<T>(url)
@@ -105,12 +119,25 @@ export function useApi() {
     // Authentication endpoints.
     auth: {
       login: (body: LoginRequest) => post<AuthResponse>('/api/auth/login', body),
-      // rememberMe asks the API to mint a long-lived (30-day) JWT.
+      // rememberMe controls how long the frontend persists the auth cookie;
+      // the JWT itself stays valid until logout or a credential change.
       google: (idToken: string, rememberMe: boolean = false) =>
         post<AuthResponse>('/api/auth/google', { idToken, rememberMe }),
       register: (body: { name: string; email: string; password: string; phoneNumber: string; dateOfBirth: string | null }) =>
         post<AuthResponse>('/api/auth/register', body),
       unlock: (userId: number) => post<string>(`/api/auth/unlock/${userId}`),
+      // Rotates the server-side SecurityStamp, revoking every JWT previously
+      // issued for the calling user.
+      logout: () => post<string>('/api/auth/logout'),
+      // Self-service password change; on success the server revokes all
+      // sessions so the user must sign in again with the new password.
+      changePassword: (currentPassword: string, newPassword: string) =>
+        post<string>('/api/auth/change-password', { currentPassword, newPassword }),
+      // Always resolves with a generic message, whether or not the email is
+      // registered — the API never reveals which emails have accounts.
+      forgotPassword: (email: string) => post<string>('/api/auth/forgot-password', { email }),
+      resetPassword: (token: string, newPassword: string) =>
+        post<string>('/api/auth/reset-password', { token, newPassword }),
     },
 
     // Appointment CRUD and query endpoints.
@@ -118,8 +145,15 @@ export function useApi() {
       all: () => get<Appointment[]>('/api/appointments/all'),
       byId: (id: number) => get<Appointment>(`/api/appointments/${id}`),
       create: (body: AppointmentRequest) => post<Appointment>('/api/appointments', body),
+      // Books up to repeatWeeks occurrences 7 days apart in one request;
+      // conflicting weeks are skipped rather than failing the whole series.
+      createRecurring: (body: RecurringAppointmentRequest) =>
+        post<RecurringAppointmentResult>('/api/appointments/recurring', body),
       update: (id: number, body: AppointmentRequest) =>
         put<Appointment>(`/api/appointments/${id}`, body),
+      // Worker portal status transition (start / complete / no-show).
+      changeStatus: (id: number, status: AppointmentStatus) =>
+        patch<Appointment>(`/api/appointments/${id}/status`, { status }),
       delete: (id: number) => del<null>(`/api/appointments/${id}`),
       byRange: (start: string, end: string) =>
         get<Appointment[]>('/api/appointments/range', { dateStart: start, dateEnd: end }),
@@ -147,12 +181,25 @@ export function useApi() {
       delete: (id: number) => del<null>(`/api/workers/${id}`),
       servicesByWorker: (id: number) => get<Service[]>(`/api/workers/by-worker/${id}`),
       workersByService: (id: number) => get<Worker[]>(`/api/workers/by-service/${id}`),
+      // Server-computed bookable "HH:mm" slots for a worker+date+service.
+      // Replaces the old client-side slot math (which required downloading
+      // every appointment of the worker).
+      availability: (id: number, date: string, serviceId: number) =>
+        get<AvailabilityResponse>(
+          `/api/workers/${id}/availability?date=${date}&serviceId=${serviceId}`,
+        ),
     },
 
     // Customer CRUD endpoints.
     customers: {
       all: () => get<Customer[]>('/api/customers/all'),
       byId: (id: number) => get<Customer>(`/api/customers/${id}`),
+      // Own record / update — the only customer endpoints usable by a client
+      // (the id-based ones are Admin-only).
+      me: () => get<Customer>('/api/customers/me'),
+      updateMe: (body: Partial<Customer>) => put<Customer>('/api/customers/me', body),
+      // Completed-visit progress toward the next configurable reward.
+      myLoyalty: () => get<LoyaltyStatus>('/api/customers/me/loyalty'),
       create: (body: Partial<Customer>) => post<Customer>('/api/customers', body),
       update: (id: number, body: Partial<Customer>) =>
         put<Customer>(`/api/customers/${id}`, body),
@@ -171,6 +218,10 @@ export function useApi() {
     // User account management endpoints (note: no /api prefix per the spec).
     users: {
       all: () => get<User[]>('/users/all'),
+      // Own record of the authenticated user — the only /users endpoint that
+      // does not require the Admin role. Used by /my and /worker to resolve
+      // the linked customerId/workerId.
+      me: () => get<User>('/users/me'),
       byId: (id: number) => get<User>(`/users/${id}`),
       create: (body: UserRequest) => post<User>('/users', body),
       update: (id: number, body: UserRequest) => put<User>(`/users/${id}`, body),
@@ -189,6 +240,25 @@ export function useApi() {
       removeClosure: (id: number) => del<null>(`/api/working-hours/closures/${id}`),
       isOpen: (dateTime: string) =>
         get<{ isOpen: boolean }>('/api/working-hours/is-open', { dateTime }),
+    },
+
+    // Post-appointment review endpoints.
+    reviews: {
+      create: (body: ReviewRequest) => post<Review>('/api/reviews', body),
+      byWorker: (workerId: number) => get<Review[]>(`/api/reviews/worker/${workerId}`),
+      // Bulk average+count per worker — avoids one request per worker card
+      // when rendering ratings in the booking flow.
+      summary: () => get<WorkerRatingSummary[]>('/api/reviews/summary'),
+      // The caller's own reviews — used to hide "Leave a review" once an
+      // appointment already has one.
+      mine: () => get<Review[]>('/api/reviews/mine'),
+      all: () => get<Review[]>('/api/reviews/all'),
+      delete: (id: number) => del<null>(`/api/reviews/${id}`),
+    },
+
+    // Admin analytics.
+    reports: {
+      summary: () => get<ReportsSummary>('/api/reports/summary'),
     },
   }
 

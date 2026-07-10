@@ -62,5 +62,10 @@ function statusBadge(status: AppointmentStatus): { cls: string; label: string } 
     >
       {{ cancelling ? 'Cancelling…' : 'Cancel appointment' }}
     </button>
+
+    <!-- Optional action bar (e.g. worker start/complete/no-show buttons). -->
+    <div v-if="$slots.actions" class="flex flex-wrap gap-2 mt-1">
+      <slot name="actions" :appointment="appointment" />
+    </div>
   </div>
 </template>
