@@ -4,7 +4,12 @@
 // booking flow's Playwright E2E coverage.
 import { describe, it, expect } from 'vitest'
 import { mount } from '@vue/test-utils'
+import { createI18n } from 'vue-i18n'
 import type { Service, Worker } from '~/types'
+import en from '~/i18n/locales/en.json'
+
+const i18n = createI18n({ legacy: false, locale: 'en', messages: { en, 'pt-BR': en } })
+const global = { plugins: [i18n] }
 
 const SERVICE: Service = { id: 1, name: 'Haircut', description: '', duration: 30, price: 25 }
 const WORKER: Worker = {
@@ -32,7 +37,7 @@ const BASE_PROPS = {
 describe('StepConfirm — repeat weekly', () => {
   it('omits repeatWeeks from the confirm payload when the toggle is off', async () => {
     const { default: StepConfirm } = await import('~/components/booking/StepConfirm.vue')
-    const wrapper = mount(StepConfirm, { props: BASE_PROPS })
+    const wrapper = mount(StepConfirm, { props: BASE_PROPS, global })
 
     await wrapper.find('form').trigger('submit.prevent')
 
@@ -43,7 +48,7 @@ describe('StepConfirm — repeat weekly', () => {
 
   it('includes the chosen week count when the toggle is on', async () => {
     const { default: StepConfirm } = await import('~/components/booking/StepConfirm.vue')
-    const wrapper = mount(StepConfirm, { props: BASE_PROPS })
+    const wrapper = mount(StepConfirm, { props: BASE_PROPS, global })
 
     await wrapper.find('#repeat-weekly').setValue(true)
     await wrapper.find('#repeat-weeks').setValue(6)
@@ -55,7 +60,7 @@ describe('StepConfirm — repeat weekly', () => {
 
   it('hides the week-count input until the toggle is checked', async () => {
     const { default: StepConfirm } = await import('~/components/booking/StepConfirm.vue')
-    const wrapper = mount(StepConfirm, { props: BASE_PROPS })
+    const wrapper = mount(StepConfirm, { props: BASE_PROPS, global })
 
     expect(wrapper.find('#repeat-weeks').exists()).toBe(false)
 

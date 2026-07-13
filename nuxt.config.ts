@@ -7,9 +7,31 @@ export default defineNuxtConfig({
   // Build/compat date pinned to keep Nitro/Nuxt feature flags deterministic.
   compatibilityDate: '2025-04-01',
 
-  // Disabled until Sprint 5 adds the public landing page that benefits from SSR.
-  // Axios 1.x imports form-data on the server which is not available in this project.
-  ssr: false,
+  // SSR enabled globally (sprint070726 §4.8) for the public marketing/booking
+  // surface — faster first paint, real content for crawlers. The
+  // authenticated, personalized areas (admin/worker/client portals) opt back
+  // out below: no SEO value, heaviest Pinia/SignalR usage, and the least
+  // benefit from paying SSR's extra complexity. routeRules only supports
+  // disabling SSR under a true global default, not the reverse, so this is
+  // the "opt out the few" shape rather than "opt in the few".
+  ssr: true,
+  // The i18n module registers a locale-prefixed variant of every route, and
+  // Nitro route rules don't see through that prefix — without the prefixed
+  // twins below, /pt-BR/admin etc. would silently SSR the very portals these
+  // rules exclude. Both locale prefixes are listed because DEFAULT_LOCALE is
+  // a per-instance build arg: whichever locale is NOT the default gets the
+  // prefix (prefix_except_default).
+  routeRules: {
+    '/admin/**': { ssr: false },
+    '/worker/**': { ssr: false },
+    '/my/**': { ssr: false },
+    '/pt-BR/admin/**': { ssr: false },
+    '/pt-BR/worker/**': { ssr: false },
+    '/pt-BR/my/**': { ssr: false },
+    '/en/admin/**': { ssr: false },
+    '/en/worker/**': { ssr: false },
+    '/en/my/**': { ssr: false },
+  },
 
   // Port 3000 is occupied by Grafana in the local dev environment.
   devServer: { port: 3001 },
@@ -23,25 +45,67 @@ export default defineNuxtConfig({
     '@vite-pwa/nuxt',
     '@nuxt/eslint',
     '@sentry/nuxt/module',
+    '@nuxtjs/i18n',
   ],
 
-  // Force dark theme: no class suffix, dark preference, dark fallback.
-  // The plan requires the obsidian palette as the default look.
+  // ── i18n (sprint070726 §4.6) ─────────────────────────────────────────────
+  // English (default, unprefixed) + Portuguese (Brazil). Scoped to the
+  // public-facing surface a bilingual customer actually sees — the
+  // authenticated admin/worker/client portals are internal tooling with no
+  // customer-facing audience (same boundary already used for the SSR
+  // routeRules above) and stay English-only for now.
+  // defaultLocale is a build-time decision (route generation depends on it),
+  // so a per-client instance sets the DEFAULT_LOCALE build arg — the frontend
+  // image is built per deployment (compose `build:`), unlike the shared API
+  // image. The portfolio demo keeps 'en'.
+  i18n: {
+    strategy: 'prefix_except_default',
+    defaultLocale: (process.env.DEFAULT_LOCALE as 'en' | 'pt-BR') || 'en',
+    locales: [
+      { code: 'en', language: 'en', name: 'English', file: 'en.json' },
+      { code: 'pt-BR', language: 'pt-BR', name: 'Português (Brasil)', file: 'pt-BR.json' },
+    ],
+  },
+
+  // Dark/light toggle (sprint070726 §4.5). No class suffix so the module
+  // writes a bare `dark`/`light` class matching tailwind.config.ts's
+  // `darkMode: 'class'`. Defaults to dark (the site's original look) on
+  // first visit; `UiThemeToggle` lets the user switch, persisted via the
+  // module's own cookie.
   colorMode: {
     classSuffix: '',
     preference: 'dark',
     fallback: 'dark',
   },
 
-  // Public runtime config. With ssr:false the NUXT_PUBLIC_* env vars are not
-  // applied per-request, so we default to empty and use $development below to
-  // supply the local API URL. Production deploys override via env vars at build.
+  // Private (server-only) runtime config. Not exposed to the client bundle.
+  // Server-side axios calls (SSR data fetching) can't resolve a relative
+  // apiBase the way a browser resolves it against the page origin — Node has
+  // no implicit base URL — so SSR uses this internal Docker service DNS name
+  // instead. Irrelevant for the SPA-only routes excluded via routeRules above.
   runtimeConfig: {
+    apiBaseInternal: 'http://api:8080',
+
+    // Public runtime config, resolved from NUXT_PUBLIC_* env vars once at
+    // Nitro startup (same resolved value used for both SSR and the client
+    // hydration payload, so there's no server/client mismatch). Defaults to
+    // empty/relative — proxied through nginx in production — and
+    // $development below supplies the local API URL for `nuxt dev`.
     public: {
       apiBase: '',
       googleClientId: '',
-      // Shop contact & location — defaults are Sky Tower Auckland placeholders.
-      // Override at build time via NUXT_PUBLIC_SHOP_* env vars.
+      // Fully-qualified site origin the i18n module needs to emit hreflang/
+      // canonical alternate links from useLocaleHead() — without it every SSR
+      // render logs "I18n baseUrl is required..." and skips those SEO tags.
+      // Lives in runtimeConfig (not the i18n module block) so a deployment
+      // can override it after build via NUXT_PUBLIC_I18N_BASE_URL.
+      i18n: {
+        baseUrl: 'http://localhost',
+      },
+      // Shop identity, contact & location — defaults are the portfolio demo
+      // values. Each rented client instance overrides these at runtime via
+      // NUXT_PUBLIC_SHOP_* env vars (white-label, sprint12072026license §4).
+      shopName: 'BarberShop',
       shopAddress: '1 Sky City, Victoria St W, Auckland CBD 1010, New Zealand',
       shopPhone: '+64 9 000 0000',
       shopEmail: 'info@barbershop.com',
@@ -60,6 +124,9 @@ export default defineNuxtConfig({
   // proxy. (The Vite WS proxy is too fragile for SignalR's reconnect cycle.)
   $development: {
     runtimeConfig: {
+      // The Docker-internal DNS name doesn't resolve under `nuxt dev` — point
+      // server-side SSR fetches at the same local API the browser uses.
+      apiBaseInternal: 'http://localhost:8080',
       public: {
         apiBase: 'http://localhost:8080',
       },
@@ -76,7 +143,9 @@ export default defineNuxtConfig({
     head: {
       charset: 'utf-8',
       viewport: 'width=device-width, initial-scale=1',
-      title: 'BarberShop',
+      // Build-time default only — app.vue overrides the title at runtime from
+      // NUXT_PUBLIC_SHOP_NAME (white-label, sprint12072026license §4).
+      title: process.env.NUXT_PUBLIC_SHOP_NAME || 'BarberShop',
       meta: [
         { name: 'description', content: 'Premium barbershop management and booking.' },
         { name: 'theme-color', content: '#0a0a0a' },
@@ -132,9 +201,12 @@ export default defineNuxtConfig({
   // caching rules aligned with the sprint spec.
   pwa: {
     registerType: 'autoUpdate',
+    // Manifest identity is baked at build time — per-client instances pass
+    // NUXT_PUBLIC_SHOP_NAME as a compose build arg (the frontend image is
+    // built per deployment); the demo keeps the defaults.
     manifest: {
-      name: 'BarberShop',
-      short_name: 'BarberShop',
+      name: process.env.NUXT_PUBLIC_SHOP_NAME || 'BarberShop',
+      short_name: process.env.NUXT_PUBLIC_SHOP_NAME || 'BarberShop',
       description: 'Premium barbershop management & booking',
       start_url: '/',
       display: 'standalone',

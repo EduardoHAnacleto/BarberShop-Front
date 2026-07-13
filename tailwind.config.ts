@@ -54,14 +54,15 @@ export default {
           900: '#0f0f0f',
           950: '#080808',
         },
-        // Semantic aliases used by component-layer classes. DEFAULT lets
-        // `bg-surface` resolve to surface.DEFAULT in utility shorthand.
-        surface: {
-          DEFAULT: '#111111',
-          raised: '#181818',
-          overlay: '#202020',
-          border: '#2a2a2a',
-        },
+        // Note: surface/text/border semantic tokens are NOT defined here —
+        // they live as CSS custom properties in assets/css/global.css
+        // (`--surface`, `--border`, etc.), each with a light (:root) and dark
+        // (.dark) value, exposed via hand-written `.bg-surface`/`.text-primary`/
+        // etc. utility classes in @layer utilities. Defining a static
+        // `surface` color here would generate a same-named `.bg-surface`
+        // Tailwind utility that silently wins the cascade over the
+        // CSS-variable version — pinning it to one theme regardless of
+        // dark/light (sprint070726 §4.5 bug, fixed by removing this block).
       },
 
       // Typography stacks. `display` is for headings (serif), `body` is

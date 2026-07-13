@@ -2,7 +2,8 @@
 // Client portal: profile editor + split-view appointment history.
 // Left column: upcoming and ongoing appointments (can be cancelled).
 // Right column: past appointments (completed, cancelled, etc.).
-import type { Customer, Appointment, Review, LoyaltyStatus } from '~/types'
+import dayjs from 'dayjs'
+import type { Customer, Appointment, Review, LoyaltyStatus, WaitlistEntry } from '~/types'
 import { AppointmentStatus } from '~/types'
 import { isInDateRange, byProximityToNow } from '~/utils/appointmentFilters'
 import type { DateFilter } from '~/utils/appointmentFilters'
@@ -49,6 +50,7 @@ const customer = ref<Customer | null>(null)
 const appointments = ref<Appointment[]>([])
 const reviews = ref<Review[]>([])
 const loyalty = ref<LoyaltyStatus | null>(null)
+const waitlist = ref<WaitlistEntry[]>([])
 const pageLoading = ref(true)
 const noProfile = ref(false)
 
@@ -283,6 +285,25 @@ async function cancelAppointment(id: number): Promise<void> {
   }
 }
 
+// ── Waitlist ──────────────────────────────────────────────────────────────────
+
+// ID of the waitlist entry currently being left (null = none in flight).
+const leavingWaitlistId = ref<number | null>(null)
+
+async function leaveWaitlist(id: number): Promise<void> {
+  leavingWaitlistId.value = id
+  try {
+    await api.waitlist.remove(id)
+    waitlist.value = waitlist.value.filter((w) => w.id !== id)
+    toast.success('Removed from waitlist')
+  } catch (err: unknown) {
+    const msg = (err as { response?: { data?: string } }).response?.data ?? 'Could not leave the waitlist'
+    toast.error(typeof msg === 'string' ? msg : 'Could not leave the waitlist')
+  } finally {
+    leavingWaitlistId.value = null
+  }
+}
+
 // ── Data loading ──────────────────────────────────────────────────────────────
 
 async function loadData(): Promise<void> {
@@ -319,6 +340,13 @@ async function loadData(): Promise<void> {
   // Best-effort: the loyalty card simply stays hidden on failure.
   try {
     loyalty.value = await api.customers.myLoyalty()
+  } catch {
+    // Ignore.
+  }
+
+  // Best-effort: the waitlist card simply stays hidden on failure.
+  try {
+    waitlist.value = await api.waitlist.mine()
   } catch {
     // Ignore.
   }
@@ -366,7 +394,7 @@ onMounted(loadData)
               <span class="text-secondary">Loyalty progress</span>
               <span class="font-mono text-xs text-muted">{{ loyalty.completedVisits }} completed visits</span>
             </div>
-            <div class="mt-2 h-2 rounded-full bg-obsidian-700 overflow-hidden">
+            <div class="mt-2 h-2 rounded-full bg-raised overflow-hidden">
               <div
                 class="h-full bg-gold-400 transition-all"
                 :style="{ width: `${loyaltyProgressPercent}%` }"
@@ -452,6 +480,34 @@ onMounted(loadData)
               </div>
             </form>
           </div>
+        </div>
+
+        <!-- ── My waitlist ── -->
+        <div v-if="waitlist.length > 0" class="card">
+          <h2 class="font-display text-xl text-primary mb-4">My Waitlist</h2>
+          <ul class="space-y-3">
+            <li
+              v-for="entry in waitlist"
+              :key="entry.id"
+              class="flex items-center justify-between gap-4 text-sm"
+            >
+              <div>
+                <p class="text-primary">{{ entry.serviceName }} with {{ entry.workerName }}</p>
+                <p class="text-muted text-xs mt-0.5">
+                  {{ dayjs(entry.preferredDate).format('MMM DD, YYYY') }}
+                  <span v-if="entry.notified" class="text-emerald-400 ml-1">· Notified</span>
+                </p>
+              </div>
+              <button
+                type="button"
+                class="text-xs py-1 px-3 rounded text-gold-400 hover:text-gold-300 shrink-0"
+                :disabled="leavingWaitlistId === entry.id"
+                @click="leaveWaitlist(entry.id)"
+              >
+                {{ leavingWaitlistId === entry.id ? 'Leaving…' : 'Leave waitlist' }}
+              </button>
+            </li>
+          </ul>
         </div>
 
         <!-- ── Appointments split view ── -->
@@ -613,7 +669,7 @@ onMounted(loadData)
               :key="n"
               type="button"
               class="text-2xl leading-none transition-colors"
-              :class="n <= reviewForm.rating ? 'text-gold-400' : 'text-obsidian-700 hover:text-gold-500/50'"
+              :class="n <= reviewForm.rating ? 'text-gold-400' : 'text-muted hover:text-gold-500/50'"
               :aria-pressed="n <= reviewForm.rating"
               :aria-label="`${n} star${n === 1 ? '' : 's'}`"
               @click="reviewForm.rating = n"

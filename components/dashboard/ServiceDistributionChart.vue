@@ -35,13 +35,18 @@ const chartData = computed(() => {
   }
 })
 
-const chartOptions = {
+// Chart.js draws to canvas, so it can't pick up CSS variables — the legend
+// color is recomputed on theme change.
+const colorMode = useColorMode()
+const isDark = computed(() => colorMode.value === 'dark')
+
+const chartOptions = computed(() => ({
   responsive: true,
   maintainAspectRatio: false,
   plugins: {
     legend: {
       position: 'bottom' as const,
-      labels: { color: 'rgba(255,255,255,0.9)', boxWidth: 12 },
+      labels: { color: isDark.value ? 'rgba(255,255,255,0.9)' : 'rgba(0,0,0,0.75)', boxWidth: 12 },
     },
     tooltip: {
       callbacks: {
@@ -49,7 +54,7 @@ const chartOptions = {
       },
     },
   },
-}
+}))
 
 const isEmpty = computed(() => Object.keys(grouped.value).length === 0)
 </script>

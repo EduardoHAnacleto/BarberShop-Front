@@ -5,9 +5,18 @@ definePageMeta({ layout: 'default' })
 
 const { login, isLoggedIn, isAdmin } = useAuth()
 const route = useRoute()
+// White-label logo monogram (sprint12072026license §4).
+const { monogram } = useShopIdentity()
 
 // Which role the staff member identified themselves as. null = not yet selected.
 const selectedRole = ref<'worker' | 'admin' | null>(null)
+
+const { t } = useI18n()
+
+// Localised, properly-cased label for the "Signing in as X" subtitle.
+const selectedRoleLabel = computed(() =>
+  selectedRole.value === 'worker' ? t('staffLogin.worker') : t('staffLogin.admin'),
+)
 
 // Login form state.
 const form = reactive({ email: '', password: '' })
@@ -49,11 +58,11 @@ async function handleLogin(): Promise<void> {
           class="w-14 h-14 rounded-xl bg-gold-500/20 border border-gold-500/30 flex items-center
                  justify-center mx-auto mb-4"
         >
-          <span class="font-display font-bold text-gold-400 text-2xl">B</span>
+          <span class="font-display font-bold text-gold-400 text-2xl">{{ monogram }}</span>
         </div>
-        <h1 class="font-display text-2xl text-primary">Staff Login</h1>
+        <h1 class="font-display text-2xl text-primary">{{ $t('nav.staffLogin') }}</h1>
         <p class="text-secondary text-sm mt-1">
-          {{ selectedRole ? `Signing in as ${selectedRole}` : 'Who are you?' }}
+          {{ selectedRole ? $t('staffLogin.signingInAs', { role: selectedRoleLabel }) : $t('staffLogin.whoAreYou') }}
         </p>
       </div>
 
@@ -77,8 +86,8 @@ async function handleLogin(): Promise<void> {
             <line x1="14.47" y1="14.48" x2="20" y2="20" />
             <line x1="8.12" y1="8.12" x2="12" y2="12" />
           </svg>
-          <span class="font-display text-primary text-lg">Worker</span>
-          <span class="text-muted text-xs text-center">Barber / Stylist</span>
+          <span class="font-display text-primary text-lg">{{ $t('staffLogin.worker') }}</span>
+          <span class="text-muted text-xs text-center">{{ $t('staffLogin.workerSubtitle') }}</span>
         </button>
 
         <!-- Admin card. -->
@@ -95,8 +104,8 @@ async function handleLogin(): Promise<void> {
           >
             <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
           </svg>
-          <span class="font-display text-primary text-lg">Admin</span>
-          <span class="text-muted text-xs text-center">Manager / Owner</span>
+          <span class="font-display text-primary text-lg">{{ $t('staffLogin.admin') }}</span>
+          <span class="text-muted text-xs text-center">{{ $t('staffLogin.adminSubtitle') }}</span>
         </button>
       </div>
 
@@ -111,13 +120,13 @@ async function handleLogin(): Promise<void> {
           <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
             <path d="M15 18l-6-6 6-6" />
           </svg>
-          Change role
+          {{ $t('staffLogin.changeRole') }}
         </button>
 
         <form class="space-y-4" @submit.prevent="handleLogin">
           <!-- Email field. -->
           <div class="form-group">
-            <label class="label" for="staff-email">Email</label>
+            <label class="label" for="staff-email">{{ $t('common.email') }}</label>
             <input
               id="staff-email"
               v-model="form.email"
@@ -131,7 +140,7 @@ async function handleLogin(): Promise<void> {
 
           <!-- Password field with visibility toggle. -->
           <div class="form-group">
-            <label class="label" for="staff-password">Password</label>
+            <label class="label" for="staff-password">{{ $t('common.password') }}</label>
             <div class="relative">
               <input
                 id="staff-password"
@@ -145,7 +154,7 @@ async function handleLogin(): Promise<void> {
               <button
                 type="button"
                 class="absolute right-3 top-1/2 -translate-y-1/2 text-muted hover:text-secondary transition-colors"
-                :aria-label="showPassword ? 'Hide password' : 'Show password'"
+                :aria-label="showPassword ? $t('common.hidePassword') : $t('common.showPassword')"
                 @click="showPassword = !showPassword"
               >
                 <SidebarIcon :icon="showPassword ? 'eye-off' : 'eye'" />
@@ -160,25 +169,25 @@ async function handleLogin(): Promise<void> {
               v-model="rememberMe"
               type="checkbox"
               autocomplete="off"
-              class="w-4 h-4 rounded border-border bg-surface-elev text-gold-500
+              class="w-4 h-4 rounded border-border bg-raised text-gold-500
                      focus:ring-gold-500/40 cursor-pointer"
             >
             <label for="staff-remember-me" class="text-sm text-secondary cursor-pointer select-none">
-              Remember me
+              {{ $t('login.rememberMe') }}
             </label>
           </div>
 
           <button type="submit" class="btn-primary w-full" :disabled="loading">
             <span v-if="loading" class="w-4 h-4 border-2 border-obsidian-950/40 border-t-obsidian-950 rounded-full animate-spin" />
-            <span>{{ loading ? 'Signing in…' : 'Sign in' }}</span>
+            <span>{{ loading ? $t('login.signingIn') : $t('login.signIn') }}</span>
           </button>
         </form>
       </template>
 
       <!-- Back to client login. -->
       <p class="text-center text-sm text-muted mt-6">
-        Looking for the client area?
-        <NuxtLink to="/login" class="text-gold-400 hover:underline ml-1">Sign in here</NuxtLink>
+        {{ $t('staffLogin.lookingForClientArea') }}
+        <NuxtLink to="/login" class="text-gold-400 hover:underline ml-1">{{ $t('staffLogin.signInHere') }}</NuxtLink>
       </p>
     </div>
   </div>

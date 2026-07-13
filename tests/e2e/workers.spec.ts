@@ -71,19 +71,49 @@ test.describe('workers page', () => {
   })
 
   test('deletes a worker via the trash icon', async ({ page }) => {
-    // Capture the name of the first worker so we can verify it is gone.
-    const firstNameEl = page.locator('tbody tr').first().locator('td').nth(1)
-    const workerName = await firstNameEl.textContent()
+    // Seed workers all carry real appointment/review history and cannot be
+    // deleted (the API correctly rejects it — see the test below) — create a
+    // throwaway worker with no linked records so this exercises the actual
+    // success path instead of always hitting that rejection.
+    const workerName = `Deletable Worker ${Date.now()}`
+    await page.click('button:has-text("New worker")')
+    await page.waitForSelector('#worker-name')
+    await page.fill('#worker-name', workerName)
+    await page.fill('#worker-email', `deletable_${Date.now()}@test.com`)
+    await page.fill('#worker-phone', '555-0188')
+    await page.fill('#worker-position', 'Junior Barber')
+    await page.fill('#worker-wage', '20')
+    await page.click('button:has-text("Save")')
+    await expect(page.locator('table')).toContainText(workerName)
 
-    await page.locator('button[aria-label="Remove worker"]').first().click()
+    const row = page.locator('tbody tr', { hasText: workerName })
+    await row.locator('button[aria-label="Remove worker"]').click()
     // Match the dialog heading rather than free text — the body also contains
     // the phrase "Remove worker" (e.g. "Remove Alice from the team?").
     await expect(page.locator('h2:has-text("Remove worker")')).toBeVisible()
     await page.click('button:has-text("Remove")')
 
     await expect(page.locator('.toast').first()).toBeVisible()
+    await expect(page.locator('table')).not.toContainText(workerName)
+  })
+
+  test('deleting a worker with existing history shows a friendly error, not a crash', async ({ page }) => {
+    // Regression test for the unhandled-500-on-FK-violation bug: seed workers
+    // (e.g. the first row) carry real appointments/reviews, so the API must
+    // reject the delete with a clear message rather than crash — and the row
+    // must stay in the table.
+    const firstNameEl = page.locator('tbody tr').first().locator('td').nth(1)
+    const workerName = await firstNameEl.textContent()
+
+    await page.locator('button[aria-label="Remove worker"]').first().click()
+    await expect(page.locator('h2:has-text("Remove worker")')).toBeVisible()
+    await page.click('button:has-text("Remove")')
+
+    const toast = page.locator('.toast').first()
+    await expect(toast).toBeVisible()
+    await expect(toast).toContainText(/existing appointments|linked records/i)
     if (workerName?.trim()) {
-      await expect(page.locator('table')).not.toContainText(workerName.trim())
+      await expect(page.locator('table')).toContainText(workerName.trim())
     }
   })
 })

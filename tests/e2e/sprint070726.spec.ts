@@ -15,6 +15,11 @@ const ADMIN = { email: 'admin@barbershop.com', password: 'Admin@123' }
 const WORKER = { email: 'james.carter@barbershop.com', password: 'Worker@123' }
 const CLIENT = { email: 'emily.johnson@example.com', password: 'Client@123' }
 
+// Direct backend base — used only for API setup/teardown (seeding a waitlist
+// entry, filling a day's slots) that would be slow or unreliable to drive
+// through the UI. Mirrors the pattern in smoke.spec.ts.
+const API_URL = process.env.API_URL ?? 'http://localhost:8080'
+
 // Logs in and waits for the client-side redirect away from the login page
 // (which only happens once the JWT cookie is set), so a subsequent navigation
 // always carries the session. The staff page shows a role selector first.
@@ -295,5 +300,168 @@ test.describe('sprint §4.3-forgot — forgot password', () => {
     // match is required to avoid Playwright's strict-mode ambiguity error.
     await expect(page.getByLabel('New password', { exact: true })).toBeVisible()
     await expect(page.getByLabel('Confirm new password')).toBeVisible()
+  })
+})
+
+// ── 5.6 — waitlist for fully-booked days ─────────────────────────────────────
+
+test.describe('sprint §5.6 — waitlist', () => {
+  test('client sees an API-seeded waitlist entry on /my and can leave it', async ({ page, request }) => {
+    // Seeding via the API (rather than driving a real "fully booked" day
+    // through the UI) keeps this deterministic — see the booking-flow test
+    // below for the full UI-driven join.
+    const loginRes = await request.post(`${API_URL}/api/auth/login`, { data: CLIENT })
+    const { token } = await loginRes.json()
+    const authHeader = { Authorization: `Bearer ${token}` }
+
+    const joinRes = await request.post(`${API_URL}/api/waitlist`, {
+      headers: authHeader,
+      data: { workerId: 1, serviceId: 1, preferredDate: '2026-09-01' },
+    })
+    expect(joinRes.ok()).toBe(true)
+    const entry = await joinRes.json()
+
+    try {
+      await loginVia(page, '/login', CLIENT)
+      await page.goto('/my')
+
+      await expect(page.getByRole('heading', { name: 'My Waitlist' })).toBeVisible()
+      await expect(page.getByText('Haircut with James Carter')).toBeVisible()
+
+      await page.getByRole('button', { name: 'Leave waitlist' }).click()
+      await expect(page.locator('.toast').first()).toBeVisible()
+      await expect(page.getByRole('heading', { name: 'My Waitlist' })).toHaveCount(0)
+    } finally {
+      // Safety net in case the UI leave-click above didn't run to completion.
+      await request.delete(`${API_URL}/api/waitlist/${entry.id}`, { headers: authHeader }).catch(() => {})
+    }
+  })
+
+  test('client can join the waitlist for a fully-booked day from the booking flow', async ({ page, request }) => {
+    // 16 sequential setup requests plus a full UI flow can run past the
+    // default 30s test timeout, which would kill the test mid-cleanup and
+    // strand appointments on the target date — give this one more headroom.
+    test.setTimeout(90_000)
+
+    // A Monday, confirmed open with a full slate of slots in this seed data —
+    // see the day-of-week scan in the sprint notes before changing this date.
+    const WAITLIST_DATE = '2026-09-21'
+
+    // Force the day fully booked by booking every slot the server reports as
+    // open for James Carter + Haircut — uses the same availability endpoint
+    // the booking page itself calls, so no business hours are hardcoded here.
+    const loginRes = await request.post(`${API_URL}/api/auth/login`, { data: ADMIN })
+    const { token } = await loginRes.json()
+    const authHeader = { Authorization: `Bearer ${token}` }
+
+    const availRes = await request.get(
+      `${API_URL}/api/workers/1/availability?date=${WAITLIST_DATE}&serviceId=1`,
+      { headers: authHeader },
+    )
+    const { slots } = await availRes.json() as { slots: string[] }
+    expect(slots.length).toBeGreaterThan(0)
+
+    // Parallelize the fill — sequential round trips for every slot risk
+    // eating the whole test timeout before the UI portion even starts.
+    const createdIds = await Promise.all(slots.map(async (slot) => {
+      const res = await request.post(`${API_URL}/api/appointments`, {
+        headers: authHeader,
+        data: {
+          workerId: 1,
+          customerId: 1,
+          serviceId: 1,
+          scheduledFor: `${WAITLIST_DATE}T${slot}:00`,
+          status: 0,
+          extraDetails: 'e2e-waitlist-fill',
+        },
+      })
+      const appt = await res.json()
+      return appt.id as number
+    }))
+
+    try {
+      await loginVia(page, '/login', CLIENT)
+      await page.goto('/book')
+      await page.locator('button.card').filter({ has: page.getByRole('heading', { name: 'Haircut', exact: true }) }).click()
+      await page.getByRole('button', { name: 'Continue' }).click()
+      await expect(page.getByRole('heading', { name: 'Choose a professional' })).toBeVisible()
+
+      await page.locator('button.card').filter({ hasText: 'James Carter' }).click()
+      await page.locator('#booking-date').fill(WAITLIST_DATE)
+
+      await expect(page.getByText('Fully booked on this day.')).toBeVisible()
+      const notifyBtn = page.getByRole('button', { name: 'Notify me if a slot opens up' })
+      await expect(notifyBtn).toBeVisible()
+      await notifyBtn.click()
+
+      // Matches both the inline confirmation and the toast — either proves
+      // the join succeeded, so disambiguate with .first() rather than picking
+      // one and risking a race if that particular element isn't the one
+      // rendered first.
+      await expect(page.getByText("You're on the waitlist").first()).toBeVisible()
+    } finally {
+      // Cleanup: cancel every appointment created to fill the day, and remove
+      // whatever waitlist entry the UI step above created.
+      if (createdIds.length > 0) {
+        await request.post(`${API_URL}/api/appointments/cancel`, {
+          headers: authHeader,
+          data: { idList: createdIds },
+        }).catch(() => {})
+      }
+
+      const allRes = await request.get(`${API_URL}/api/waitlist/all`, { headers: authHeader })
+      const all = await allRes.json() as { id: number; workerId: number; preferredDate: string }[]
+      const mine = all.filter((w) => w.workerId === 1 && w.preferredDate.startsWith(WAITLIST_DATE))
+      for (const leftover of mine) {
+        await request.delete(`${API_URL}/api/waitlist/${leftover.id}`, { headers: authHeader }).catch(() => {})
+      }
+    }
+  })
+})
+
+// ── 5.3 — per-worker individual schedules ────────────────────────────────────
+
+test.describe('sprint §5.3 — worker schedules', () => {
+  test('admin can narrow a worker\'s hours for one day and revert to the shop default', async ({ page, request }) => {
+    const loginRes = await request.post(`${API_URL}/api/auth/login`, { data: ADMIN })
+    const { token } = await loginRes.json()
+    const authHeader = { Authorization: `Bearer ${token}` }
+
+    try {
+      await loginVia(page, '/login', ADMIN)
+      await page.goto('/admin/worker-schedules')
+      await expect(page.getByRole('heading', { name: 'Worker schedules' })).toBeVisible()
+
+      await page.selectOption('#worker-select', { label: 'James Carter' })
+
+      const mondayRow = page.locator('tbody tr', { hasText: 'Monday' })
+      await expect(mondayRow.getByText('Shop default')).toBeVisible()
+
+      // Narrow Monday to a short morning shift.
+      const timeInputs = mondayRow.locator('input[type="time"]')
+      await timeInputs.nth(0).fill('09:00')
+      await timeInputs.nth(1).fill('12:00')
+      await mondayRow.getByRole('button', { name: 'Save' }).click()
+
+      await expect(page.locator('.toast').first()).toBeVisible()
+      await expect(mondayRow.getByText('Custom')).toBeVisible()
+
+      // The availability endpoint must reflect the narrowed hours immediately.
+      const availRes = await request.get(
+        `${API_URL}/api/workers/1/availability?date=2026-09-21&serviceId=1`,
+        { headers: authHeader },
+      )
+      const { slots } = await availRes.json() as { slots: string[] }
+      expect(slots).toContain('09:00')
+      expect(slots).not.toContain('17:30')
+
+      // Revert — the row goes back to "Shop default" and the full grid returns.
+      await mondayRow.getByRole('button', { name: 'Revert' }).click()
+      await expect(page.locator('.toast').first()).toBeVisible()
+      await expect(mondayRow.getByText('Shop default')).toBeVisible()
+    } finally {
+      // Safety net in case the UI revert step above didn't run to completion.
+      await request.delete(`${API_URL}/api/workers/1/schedule/1`, { headers: authHeader }).catch(() => {})
+    }
   })
 })

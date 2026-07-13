@@ -168,3 +168,15 @@ Currently seeking Software Development opportunities across New Zealand.
 - LinkedIn: https://linkedin.com/in/eduardohipolitoanacleto
 - GitHub: https://github.com/EduardoHAnacleto
 - Email: eduardohanacleto@gmail.com
+
+# 📜 License
+
+**All rights reserved — source-available for evaluation.**
+
+This repository is published as a professional portfolio. You are welcome to view, clone,
+build and run it locally to evaluate the work (see [LICENSE](LICENSE) for the exact terms).
+Production or commercial use — including operating it for a real business — requires a
+separate written agreement: the application is offered as a **rented, managed per-client
+instance** (dedicated stack, domain, database and support).
+
+Licensing / rental inquiries: **eduardohanacleto@gmail.com**

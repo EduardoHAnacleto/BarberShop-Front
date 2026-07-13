@@ -5,6 +5,8 @@ definePageMeta({ layout: 'default' })
 
 const route = useRoute()
 const { login, loginWithGoogle, isLoggedIn, isAdmin } = useAuth()
+// White-label logo monogram (sprint12072026license §4).
+const { monogram } = useShopIdentity()
 
 // Form state bound to the inputs.
 const form = reactive({ email: '', password: '' })
@@ -126,17 +128,17 @@ onMounted(() => {
           class="w-14 h-14 rounded-xl bg-gold-500/20 border border-gold-500/30 flex items-center
                  justify-center mx-auto mb-4"
         >
-          <span class="font-display font-bold text-gold-400 text-2xl">B</span>
+          <span class="font-display font-bold text-gold-400 text-2xl">{{ monogram }}</span>
         </div>
-        <h1 class="font-display text-2xl text-primary">Client Sign In</h1>
-        <p class="text-secondary text-sm mt-1">Access your booking and profile</p>
+        <h1 class="font-display text-2xl text-primary">{{ $t('login.title') }}</h1>
+        <p class="text-secondary text-sm mt-1">{{ $t('login.subtitle') }}</p>
       </div>
 
       <!-- Email / password form. -->
       <form class="space-y-4" @submit.prevent="handleLogin">
         <!-- Email field. -->
         <div class="form-group">
-          <label class="label" for="email">Email</label>
+          <label class="label" for="email">{{ $t('common.email') }}</label>
           <input
             id="email"
             v-model="form.email"
@@ -150,7 +152,7 @@ onMounted(() => {
 
         <!-- Password field with visibility toggle. -->
         <div class="form-group">
-          <label class="label" for="password">Password</label>
+          <label class="label" for="password">{{ $t('common.password') }}</label>
           <div class="relative">
             <input
               id="password"
@@ -166,7 +168,7 @@ onMounted(() => {
               type="button"
               class="absolute right-3 top-1/2 -translate-y-1/2 text-muted hover:text-secondary
                      transition-colors"
-              :aria-label="showPassword ? 'Hide password' : 'Show password'"
+              :aria-label="showPassword ? $t('common.hidePassword') : $t('common.showPassword')"
               @click="showPassword = !showPassword"
             >
               <SidebarIcon :icon="showPassword ? 'eye-off' : 'eye'" />
@@ -182,15 +184,15 @@ onMounted(() => {
               v-model="rememberMe"
               type="checkbox"
               autocomplete="off"
-              class="w-4 h-4 rounded border-border bg-surface-elev text-gold-500
+              class="w-4 h-4 rounded border-border bg-raised text-gold-500
                      focus:ring-gold-500/40 cursor-pointer"
             >
             <label for="remember-me" class="text-sm text-secondary cursor-pointer select-none">
-              Remember me
+              {{ $t('login.rememberMe') }}
             </label>
           </div>
           <NuxtLink to="/forgot-password" class="text-sm text-gold-400 hover:underline">
-            Forgot password?
+            {{ $t('login.forgotPassword') }}
           </NuxtLink>
         </div>
 
@@ -201,7 +203,7 @@ onMounted(() => {
           :disabled="loading"
         >
           <span v-if="loading" class="w-4 h-4 border-2 border-obsidian-950/40 border-t-obsidian-950 rounded-full animate-spin" />
-          <span>{{ loading ? 'Signing in…' : 'Sign in' }}</span>
+          <span>{{ loading ? $t('login.signingIn') : $t('login.signIn') }}</span>
         </button>
       </form>
 
@@ -211,18 +213,18 @@ onMounted(() => {
           <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
           </svg>
-          Back to home
+          {{ $t('common.backToHome') }}
         </NuxtLink>
       </div>
 
       <!-- Links for clients: register or switch to staff login. -->
       <p class="text-center text-sm text-muted mt-3">
-        Don't have an account?
-        <NuxtLink to="/register" class="text-gold-400 hover:underline ml-1">Register</NuxtLink>
+        {{ $t('login.noAccount') }}
+        <NuxtLink to="/register" class="text-gold-400 hover:underline ml-1">{{ $t('nav.register') }}</NuxtLink>
       </p>
       <p class="text-center text-sm text-muted mt-2">
-        Are you staff?
-        <NuxtLink to="/staff-login" class="text-gold-400 hover:underline ml-1">Staff Login</NuxtLink>
+        {{ $t('login.areYouStaff') }}
+        <NuxtLink to="/staff-login" class="text-gold-400 hover:underline ml-1">{{ $t('nav.staffLogin') }}</NuxtLink>
       </p>
 
       <!-- Divider and Google sign-in are hidden when no client ID is configured. -->
@@ -230,7 +232,7 @@ onMounted(() => {
         <!-- Divider between email/password and Google sign-in. -->
         <div class="flex items-center gap-3 my-5">
           <div class="flex-1 divider" />
-          <span class="text-xs text-muted font-mono">or</span>
+          <span class="text-xs text-muted font-mono">{{ $t('common.or') }}</span>
           <div class="flex-1 divider" />
         </div>
 

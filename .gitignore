@@ -43,3 +43,6 @@ playwright/.cache
 CLAUDE.md
 # Added by code-review-graph
 .code-review-graph/
+
+# Generated per-client instance packages hold real secrets (deploy/new-client.ps1)
+deploy/clients/

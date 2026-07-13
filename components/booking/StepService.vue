@@ -33,8 +33,8 @@ function formatDuration(minutes: number): string {
 
 <template>
   <div>
-    <h2 class="font-display text-xl text-primary mb-1">Choose a service</h2>
-    <p class="text-secondary text-sm mb-6">Select the service you'd like to book.</p>
+    <h2 class="font-display text-xl text-primary mb-1">{{ $t('bookingStep.chooseService') }}</h2>
+    <p class="text-secondary text-sm mb-6">{{ $t('bookingStep.chooseServiceSubtitle') }}</p>
 
     <!-- Skeleton grid while services are loading. -->
     <div v-if="loading" class="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -47,7 +47,7 @@ function formatDuration(minutes: number): string {
 
     <!-- Empty state. -->
     <p v-else-if="services.length === 0" class="text-center text-muted py-12">
-      No services available at the moment.
+      {{ $t('home.noServices') }}
     </p>
 
     <!-- Selectable service cards. -->

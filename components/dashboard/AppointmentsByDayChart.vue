@@ -33,28 +33,33 @@ const chartData = computed(() => {
   }
 })
 
-// Chart.js options: stacked, dark theme, transparent background.
-const chartOptions = {
+// Chart.js options: stacked, transparent background, colors follow the
+// active color mode (Chart.js draws to canvas, so it can't pick up CSS
+// variables — the grid/tick/legend colors are recomputed on theme change).
+const colorMode = useColorMode()
+const isDark = computed(() => colorMode.value === 'dark')
+
+const chartOptions = computed(() => ({
   responsive: true,
   maintainAspectRatio: false,
   scales: {
     x: {
       stacked: true,
-      grid: { color: 'rgba(255,255,255,0.05)' },
-      ticks: { color: 'rgba(255,255,255,0.7)' },
+      grid: { color: isDark.value ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.06)' },
+      ticks: { color: isDark.value ? 'rgba(255,255,255,0.7)' : 'rgba(0,0,0,0.6)' },
     },
     y: {
       stacked: true,
       beginAtZero: true,
-      grid: { color: 'rgba(255,255,255,0.05)' },
-      ticks: { color: 'rgba(255,255,255,0.7)', precision: 0 },
+      grid: { color: isDark.value ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.06)' },
+      ticks: { color: isDark.value ? 'rgba(255,255,255,0.7)' : 'rgba(0,0,0,0.6)', precision: 0 },
     },
   },
   plugins: {
-    legend: { labels: { color: 'rgba(255,255,255,0.9)' } },
+    legend: { labels: { color: isDark.value ? 'rgba(255,255,255,0.9)' : 'rgba(0,0,0,0.75)' } },
     tooltip: { mode: 'index' as const, intersect: false },
   },
-}
+}))
 </script>
 
 <template>

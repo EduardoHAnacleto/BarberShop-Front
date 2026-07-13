@@ -29,6 +29,8 @@ mockNuxtImport('useAuth', () => () => ({
 
 mockNuxtImport('useRoute', () => () => ({ path: '/admin' }))
 
+mockNuxtImport('useColorMode', () => () => ({ value: 'dark', preference: 'dark' }))
+
 describe('admin layout', () => {
   it('calls connect() once for each of the 5 hubs on mount', async () => {
     const { default: AdminLayout } = await import('~/layouts/admin.vue')

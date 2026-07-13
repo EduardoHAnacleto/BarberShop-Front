@@ -158,6 +158,21 @@ export interface BusinessSchedule {
   breakEnd?: string
 }
 
+// A worker's own override of the shop's shared BusinessSchedule for one day
+// of the week. A day missing from the worker's override list means they
+// follow the shop default for that day.
+export interface WorkerSchedule {
+  id: number
+  workerId: number
+  /** 0 = Sunday … 6 = Saturday, matching JavaScript's Date.getDay(). */
+  dayOfWeek: number
+  isOpen: boolean
+  openTime?: string
+  closeTime?: string
+  breakStart?: string
+  breakEnd?: string
+}
+
 // A closure period during which the shop is shut regardless of the regular
 // weekly schedule (e.g. public holidays, refurbishments).
 export interface WorkingHours {
@@ -178,6 +193,9 @@ export interface AvailabilityResponse {
   date: string
   /** Bookable start times ("HH:mm"), already filtered server-side. */
   slots: string[]
+  /** False when the day is outside the shop's schedule (or already past) —
+   *  as opposed to open with every slot taken. */
+  isOpen: boolean
 }
 
 // A customer's rating of a completed appointment.
@@ -244,6 +262,29 @@ export interface ReportsSummary {
   cancellationRate: number
   topServicesByRevenue: ServiceRevenue[]
   topWorkersByRevenue: WorkerRevenue[]
+}
+
+// A customer's request to be notified if a slot opens up on a fully-booked day.
+export interface WaitlistEntry {
+  id: number
+  customerId: number
+  customerName: string
+  workerId: number
+  workerName: string
+  serviceId: number
+  serviceName: string
+  /** Date only (yyyy-MM-dd) — any open slot that day satisfies the request. */
+  preferredDate: string
+  /** ISO 8601 date-time string. */
+  createdAt: string
+  notified: boolean
+}
+
+// Payload sent to POST /api/waitlist.
+export interface WaitlistRequest {
+  workerId: number
+  serviceId: number
+  preferredDate: string
 }
 
 // ─── Auth ─────────────────────────────────────────────────────────────────────

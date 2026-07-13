@@ -136,6 +136,49 @@ const server = setupServer(
       topServicesByRevenue: [{ serviceId: 1, serviceName: 'Haircut', revenue: 200, completedCount: 8 }],
       topWorkersByRevenue: [{ workerId: 2, workerName: 'James Carter', revenue: 150, completedCount: 6 }],
     })),
+
+  // Waitlist.
+  http.post('http://localhost:8080/api/waitlist', async ({ request }) => {
+    const body = await request.json() as { workerId: number; serviceId: number; preferredDate: string }
+    return HttpResponse.json({
+      id: 1,
+      customerId: 1,
+      customerName: 'Emily Johnson',
+      workerId: body.workerId,
+      workerName: 'James Carter',
+      serviceId: body.serviceId,
+      serviceName: 'Haircut',
+      preferredDate: body.preferredDate,
+      createdAt: '2026-07-01T10:00:00Z',
+      notified: false,
+    })
+  }),
+  http.get('http://localhost:8080/api/waitlist/mine', () =>
+    HttpResponse.json([{ id: 1, workerId: 2, serviceId: 3, preferredDate: '2026-08-01', notified: false }])),
+  http.get('http://localhost:8080/api/waitlist/all', () =>
+    HttpResponse.json([
+      { id: 1, workerId: 2, serviceId: 3, preferredDate: '2026-08-01', notified: false },
+      { id: 2, workerId: 2, serviceId: 3, preferredDate: '2026-08-02', notified: true },
+    ])),
+  http.delete('http://localhost:8080/api/waitlist/:id', () => new HttpResponse(null, { status: 204 })),
+
+  // Worker schedule overrides.
+  http.get('http://localhost:8080/api/workers/:workerId/schedule', ({ params }) =>
+    HttpResponse.json([
+      { id: 1, workerId: Number(params.workerId), dayOfWeek: 1, isOpen: true, openTime: '09:00:00', closeTime: '12:00:00' },
+    ])),
+  http.put('http://localhost:8080/api/workers/:workerId/schedule/:day', async ({ request, params }) => {
+    const body = await request.json() as { isOpen: boolean; openTime?: string; closeTime?: string }
+    return HttpResponse.json({
+      id: 1,
+      workerId: Number(params.workerId),
+      dayOfWeek: Number(params.day),
+      isOpen: body.isOpen,
+      openTime: body.openTime,
+      closeTime: body.closeTime,
+    })
+  }),
+  http.delete('http://localhost:8080/api/workers/:workerId/schedule/:day', () => new HttpResponse(null, { status: 204 })),
 )
 
 beforeAll(() => server.listen({ onUnhandledRequest: 'error' }))
@@ -330,5 +373,54 @@ describe('api.reports', () => {
     expect(summary.revenueLast30Days).toBe(200)
     expect(summary.topServicesByRevenue[0]?.serviceName).toBe('Haircut')
     expect(summary.topWorkersByRevenue[0]?.workerName).toBe('James Carter')
+  })
+})
+
+describe('api.waitlist', () => {
+  it('join() POSTs the request and returns the created entry', async () => {
+    const entry = await api.waitlist.join({ workerId: 2, serviceId: 3, preferredDate: '2026-08-01' })
+    expect(entry.workerId).toBe(2)
+    expect(entry.serviceId).toBe(3)
+    expect(entry.preferredDate).toBe('2026-08-01')
+    expect(entry.notified).toBe(false)
+  })
+
+  it('mine() GETs the caller\'s own waitlist entries', async () => {
+    const mine = await api.waitlist.mine()
+    expect(mine).toHaveLength(1)
+    expect(mine[0]?.workerId).toBe(2)
+  })
+
+  it('all() GETs every waitlist entry for admin moderation', async () => {
+    const all = await api.waitlist.all()
+    expect(all).toHaveLength(2)
+    expect(all[1]?.notified).toBe(true)
+  })
+
+  it('remove() deletes a waitlist entry by id', async () => {
+    // A 204 No Content body comes back as '' through axios, not null.
+    await expect(api.waitlist.remove(1)).resolves.toBe('')
+  })
+})
+
+describe('api.workerSchedule', () => {
+  it('getByWorker() GETs the override rows for a worker', async () => {
+    const overrides = await api.workerSchedule.getByWorker(2)
+    expect(overrides).toHaveLength(1)
+    expect(overrides[0]?.dayOfWeek).toBe(1)
+  })
+
+  it('upsert() PUTs the override and returns the saved row', async () => {
+    const saved = await api.workerSchedule.upsert(2, 1, {
+      isOpen: true, openTime: '10:00:00', closeTime: '14:00:00',
+    })
+    expect(saved.workerId).toBe(2)
+    expect(saved.dayOfWeek).toBe(1)
+    expect(saved.openTime).toBe('10:00:00')
+  })
+
+  it('removeOverride() deletes the override for a worker+day', async () => {
+    // A 204 No Content body comes back as '' through axios, not null.
+    await expect(api.workerSchedule.removeOverride(2, 1)).resolves.toBe('')
   })
 })

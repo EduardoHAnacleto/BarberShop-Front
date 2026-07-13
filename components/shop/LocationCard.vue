@@ -27,7 +27,7 @@ const mapSrc = computed<string>(() => {
 
 <template>
   <div class="card space-y-4">
-    <h3 class="font-display text-lg text-primary">Find Us</h3>
+    <h3 class="font-display text-lg text-primary">{{ $t('location.findUs') }}</h3>
 
     <!-- Embedded Google Map. -->
     <div v-if="mapSrc" class="rounded-lg overflow-hidden border border-border">
@@ -38,8 +38,8 @@ const mapSrc = computed<string>(() => {
         style="border: 0"
         loading="lazy"
         referrerpolicy="no-referrer-when-downgrade"
-        title="Shop location map"
-        aria-label="Shop location on Google Maps"
+        :title="$t('location.mapTitle')"
+        :aria-label="$t('location.mapAriaLabel')"
       />
     </div>
 

@@ -17,12 +17,19 @@ const props = defineProps<{
   selectedDate: string
   // True when the selected date falls outside the shop's schedule.
   dayIsClosed: boolean
+  // True when the day is open but every slot is taken — only then can the
+  // customer join a waitlist (a closed day will never free one up).
+  dayIsFullyBooked: boolean
   // True while the parent is fetching the day's schedule.
   loadingSchedule: boolean
   // Available HH:mm time slots derived from the day's schedule.
   timeSlots: string[]
   // The selected time slot string (empty = not yet chosen).
   selectedTime: string
+  // True once the caller has already joined the waitlist for this worker+date.
+  onWaitlist: boolean
+  // True while the join-waitlist request is in flight.
+  joiningWaitlist: boolean
 }>()
 
 const emit = defineEmits<{
@@ -30,6 +37,8 @@ const emit = defineEmits<{
   (e: 'select-worker', workerId: number): void
   // Fired when the user changes the date input or picks a time slot.
   (e: 'select-date' | 'select-time', value: string): void
+  // Fired when the user asks to be notified if a slot opens up.
+  (e: 'join-waitlist'): void
 }>()
 
 // ISO date string of today in local time — used as the date picker minimum.
@@ -51,8 +60,8 @@ const selectedWorker = computed(
   <div class="space-y-8">
     <!-- Worker selection -->
     <div>
-      <h2 class="font-display text-xl text-primary mb-1">Choose a professional</h2>
-      <p class="text-secondary text-sm mb-4">Select who you'd like to see.</p>
+      <h2 class="font-display text-xl text-primary mb-1">{{ $t('bookingStep.chooseProfessional') }}</h2>
+      <p class="text-secondary text-sm mb-4">{{ $t('bookingStep.chooseProfessionalSubtitle') }}</p>
 
       <!-- Skeleton while workers are loading. -->
       <div v-if="loadingWorkers" class="grid grid-cols-2 sm:grid-cols-3 gap-3">
@@ -64,7 +73,7 @@ const selectedWorker = computed(
 
       <!-- Empty state. -->
       <p v-else-if="workers.length === 0" class="text-muted text-sm">
-        No professionals available for this service.
+        {{ $t('bookingStep.noProfessionals') }}
       </p>
 
       <!-- Worker cards. -->
@@ -99,9 +108,9 @@ const selectedWorker = computed(
 
     <!-- Date picker — only visible once a worker is selected. -->
     <div v-if="selectedWorker">
-      <h3 class="font-display text-lg text-primary mb-1">Choose a date</h3>
-      <p class="text-secondary text-sm mb-3">Pick your preferred date.</p>
-      <label for="booking-date" class="sr-only">Appointment date</label>
+      <h3 class="font-display text-lg text-primary mb-1">{{ $t('bookingStep.chooseDate') }}</h3>
+      <p class="text-secondary text-sm mb-3">{{ $t('bookingStep.chooseDateSubtitle') }}</p>
+      <label for="booking-date" class="sr-only">{{ $t('bookingStep.appointmentDate') }}</label>
       <input
         id="booking-date"
         type="date"
@@ -115,7 +124,7 @@ const selectedWorker = computed(
 
     <!-- Time slots — only visible once a date is selected. -->
     <div v-if="selectedDate && selectedWorker">
-      <h3 class="font-display text-lg text-primary mb-1">Choose a time</h3>
+      <h3 class="font-display text-lg text-primary mb-1">{{ $t('bookingStep.chooseTime') }}</h3>
 
       <!-- Schedule is still loading. -->
       <div v-if="loadingSchedule" class="flex flex-wrap gap-2 mt-3">
@@ -124,13 +133,27 @@ const selectedWorker = computed(
 
       <!-- Day is not in the shop's schedule or is marked closed. -->
       <p v-else-if="dayIsClosed" class="text-yellow-400 text-sm mt-2">
-        Closed on this day. Please select another date.
+        {{ $t('bookingStep.closedOnThisDay') }}
       </p>
 
-      <!-- No slots generated (edge case: closeTime ≤ openTime). -->
-      <p v-else-if="timeSlots.length === 0" class="text-muted text-sm mt-2">
-        No available slots for this day.
-      </p>
+      <!-- Open day, but every slot is taken — offer a waitlist instead. -->
+      <div v-else-if="dayIsFullyBooked" class="mt-2 space-y-2">
+        <p class="text-muted text-sm">
+          {{ $t('bookingStep.fullyBookedOnThisDay') }}
+        </p>
+        <p v-if="onWaitlist" class="text-emerald-400 text-sm">
+          {{ $t('booking.joinedWaitlist') }}
+        </p>
+        <button
+          v-else
+          type="button"
+          class="btn-outline text-sm"
+          :disabled="joiningWaitlist"
+          @click="emit('join-waitlist')"
+        >
+          {{ joiningWaitlist ? $t('bookingStep.joining') : $t('bookingStep.notifyMe') }}
+        </button>
+      </div>
 
       <!-- Time slot buttons. -->
       <div v-else class="flex flex-wrap gap-2 mt-3">

@@ -29,7 +29,7 @@ defineProps<{
           :class="{
             'bg-emerald-500/20 border border-emerald-500 text-emerald-400': idx + 1 < currentStep,
             'bg-gold-500/20 border-2 border-gold-500 text-gold-400 shadow-gold': idx + 1 === currentStep,
-            'bg-surface-raised border border-border text-muted': idx + 1 > currentStep,
+            'bg-raised border border-border text-muted': idx + 1 > currentStep,
           }"
         >
           <!-- Checkmark SVG for already-completed steps. -->

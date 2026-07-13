@@ -16,6 +16,7 @@ import type {
   User,
   UserRequest,
   BusinessSchedule,
+  WorkerSchedule,
   WorkingHours,
   AvailabilityResponse,
   Review,
@@ -25,19 +26,18 @@ import type {
   ReportsSummary,
   RecurringAppointmentRequest,
   RecurringAppointmentResult,
+  WaitlistEntry,
+  WaitlistRequest,
 } from '~/types'
 
-// Module-level singleton — guaranteed single instance per process.
-let _axios: AxiosInstance | null = null
+// Module-level singleton — client-side only (see useApi() below). A Nitro
+// server process handles many concurrent requests from different users in
+// the same JS runtime, so a module-level instance there would leak across
+// requests; a browser tab has exactly one user, so caching here is safe.
+let _clientAxios: AxiosInstance | null = null
 
-// Creates the Axios instance using runtime config and wires both interceptors.
-// Called at most once; subsequent calls to useApi() reuse _axios.
+// Creates an Axios instance using runtime config and wires both interceptors.
 function createAxiosInstance(baseURL: string): AxiosInstance {
-  // Warn in dev so developers can confirm the singleton is not initialised twice.
-  if (import.meta.dev) {
-    console.warn('[useApi] Creating Axios singleton')
-  }
-
   const instance = axios.create({
     baseURL,
     timeout: 15_000,
@@ -72,14 +72,23 @@ function createAxiosInstance(baseURL: string): AxiosInstance {
   return instance
 }
 
-// Returns (or lazily creates) the Axios singleton and the typed api map.
+// Returns an Axios instance (cached client-side, fresh per call on the
+// server — see the comment on _clientAxios) and the typed api map.
 export function useApi() {
-  if (!_axios) {
-    const config = useRuntimeConfig()
-    _axios = createAxiosInstance(config.public.apiBase as string)
-  }
+  const config = useRuntimeConfig()
 
-  const ax = _axios
+  let ax: AxiosInstance
+  if (import.meta.server) {
+    // SSR data fetching: a relative apiBase (the client-side default, proxied
+    // through nginx) can't be resolved without a browser location, so use the
+    // internal Docker service URL instead. Never cached across requests.
+    ax = createAxiosInstance(config.apiBaseInternal || (config.public.apiBase as string))
+  } else {
+    if (!_clientAxios) {
+      _clientAxios = createAxiosInstance(config.public.apiBase as string)
+    }
+    ax = _clientAxios
+  }
 
   // ── Generic typed HTTP helpers ──────────────────────────────────────────
 
@@ -242,6 +251,17 @@ export function useApi() {
         get<{ isOpen: boolean }>('/api/working-hours/is-open', { dateTime }),
     },
 
+    // Per-worker schedule overrides — a day missing here falls back to the
+    // shop's shared schedule (see api.schedule above).
+    workerSchedule: {
+      getByWorker: (workerId: number) =>
+        get<WorkerSchedule[]>(`/api/workers/${workerId}/schedule`),
+      upsert: (workerId: number, dayOfWeek: number, body: Partial<WorkerSchedule>) =>
+        put<WorkerSchedule>(`/api/workers/${workerId}/schedule/${dayOfWeek}`, body),
+      removeOverride: (workerId: number, dayOfWeek: number) =>
+        del<null>(`/api/workers/${workerId}/schedule/${dayOfWeek}`),
+    },
+
     // Post-appointment review endpoints.
     reviews: {
       create: (body: ReviewRequest) => post<Review>('/api/reviews', body),
@@ -259,6 +279,15 @@ export function useApi() {
     // Admin analytics.
     reports: {
       summary: () => get<ReportsSummary>('/api/reports/summary'),
+    },
+
+    // Waitlist for fully-booked days.
+    waitlist: {
+      join: (body: WaitlistRequest) => post<WaitlistEntry>('/api/waitlist', body),
+      mine: () => get<WaitlistEntry[]>('/api/waitlist/mine'),
+      all: () => get<WaitlistEntry[]>('/api/waitlist/all'),
+      // Removes the caller's own entry (or, for an Admin, any entry).
+      remove: (id: number) => del<null>(`/api/waitlist/${id}`),
     },
   }
 

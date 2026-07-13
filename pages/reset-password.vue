@@ -7,6 +7,7 @@ const route = useRoute()
 const router = useRouter()
 const { api } = useApi()
 const toast = useToast()
+const { t } = useI18n()
 
 const token = computed(() => (route.query.token as string) ?? '')
 
@@ -21,22 +22,22 @@ const passwordsMismatch = computed(
 
 async function handleSubmit(): Promise<void> {
   if (newPassword.value.length < 8) {
-    toast.error('New password must be at least 8 characters')
+    toast.error(t('resetPassword.tooShort'))
     return
   }
   if (newPassword.value !== confirmPassword.value) {
-    toast.error('Passwords do not match')
+    toast.error(t('resetPassword.mismatch'))
     return
   }
 
   submitting.value = true
   try {
     await api.auth.resetPassword(token.value, newPassword.value)
-    toast.success('Password reset. Please sign in with your new password.')
+    toast.success(t('resetPassword.successToast'))
     await router.push('/login')
   } catch (err: unknown) {
-    const msg = (err as { response?: { data?: string } }).response?.data ?? 'Could not reset password'
-    toast.error(typeof msg === 'string' ? msg : 'Could not reset password')
+    const msg = (err as { response?: { data?: string } }).response?.data ?? t('resetPassword.failed')
+    toast.error(typeof msg === 'string' ? msg : t('resetPassword.failed'))
   } finally {
     submitting.value = false
   }
@@ -60,20 +61,20 @@ async function handleSubmit(): Promise<void> {
         >
           <span class="font-display font-bold text-gold-400 text-2xl">B</span>
         </div>
-        <h1 class="font-display text-2xl text-primary">Choose a new password</h1>
+        <h1 class="font-display text-2xl text-primary">{{ $t('resetPassword.title') }}</h1>
       </div>
 
       <!-- No token in the URL — the user did not arrive via the email link. -->
       <div v-if="!token" class="card text-center space-y-3">
-        <p class="text-primary">This reset link is missing or invalid.</p>
+        <p class="text-primary">{{ $t('resetPassword.linkInvalid') }}</p>
         <NuxtLink to="/forgot-password" class="text-gold-400 hover:underline text-sm">
-          Request a new link →
+          {{ $t('resetPassword.requestNewLink') }}
         </NuxtLink>
       </div>
 
       <form v-else class="space-y-4" @submit.prevent="handleSubmit">
         <div class="form-group">
-          <label class="label" for="reset-new-password">New password</label>
+          <label class="label" for="reset-new-password">{{ $t('resetPassword.newPassword') }}</label>
           <div class="relative">
             <input
               id="reset-new-password"
@@ -87,7 +88,7 @@ async function handleSubmit(): Promise<void> {
             <button
               type="button"
               class="absolute right-3 top-1/2 -translate-y-1/2 text-muted hover:text-secondary transition-colors"
-              :aria-label="showPassword ? 'Hide password' : 'Show password'"
+              :aria-label="showPassword ? $t('common.hidePassword') : $t('common.showPassword')"
               @click="showPassword = !showPassword"
             >
               <SidebarIcon :icon="showPassword ? 'eye-off' : 'eye'" />
@@ -96,7 +97,7 @@ async function handleSubmit(): Promise<void> {
         </div>
 
         <div class="form-group">
-          <label class="label" for="reset-confirm-password">Confirm new password</label>
+          <label class="label" for="reset-confirm-password">{{ $t('resetPassword.confirmNewPassword') }}</label>
           <input
             id="reset-confirm-password"
             v-model="confirmPassword"
@@ -106,12 +107,12 @@ async function handleSubmit(): Promise<void> {
             placeholder="••••••••"
             required
           >
-          <p v-if="passwordsMismatch" class="text-red-400 text-xs mt-1">Passwords do not match</p>
+          <p v-if="passwordsMismatch" class="text-red-400 text-xs mt-1">{{ $t('resetPassword.mismatch') }}</p>
         </div>
 
         <button type="submit" class="btn-primary w-full" :disabled="submitting">
           <span v-if="submitting" class="w-4 h-4 border-2 border-obsidian-950/40 border-t-obsidian-950 rounded-full animate-spin" />
-          <span>{{ submitting ? 'Resetting…' : 'Reset password' }}</span>
+          <span>{{ submitting ? $t('resetPassword.resetting') : $t('resetPassword.resetButton') }}</span>
         </button>
       </form>
     </div>

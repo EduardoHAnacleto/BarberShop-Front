@@ -12,16 +12,16 @@ test.describe('booking flow — complete journey', () => {
     await expect(page.getByRole('heading', { name: 'Book an Appointment' })).toBeVisible()
 
     // Step 1: wait for services to load and click the first one.
-    await page.waitForSelector('.card button', { timeout: 10_000 })
-    const firstService = page.locator('.card button').first()
+    await page.waitForSelector('button.card', { timeout: 10_000 })
+    const firstService = page.locator('button.card').first()
     await firstService.click()
 
     // Advance to step 2.
     await page.getByRole('button', { name: /continue/i }).click()
 
     // Step 2: wait for worker cards to load and click the first one.
-    await page.waitForSelector('.card button', { timeout: 10_000 })
-    const firstWorker = page.locator('.card button').first()
+    await page.waitForSelector('button.card', { timeout: 10_000 })
+    const firstWorker = page.locator('button.card').first()
     await firstWorker.click()
 
     // Pick tomorrow's date in ISO format.
@@ -74,7 +74,7 @@ test.describe('booking — serviceId pre-selection', () => {
     await page.goto('/book?serviceId=1')
 
     // Wait for services to load.
-    await page.waitForSelector('.card button', { timeout: 10_000 })
+    await page.waitForSelector('button.card', { timeout: 10_000 })
 
     // The service with id=1 card should have the gold border active class.
     // We check that the Continue button is enabled (which only happens when
@@ -89,15 +89,15 @@ test.describe('booking — serviceId pre-selection', () => {
 test.describe('booking — closed day handling', () => {
   test('selecting a date that is closed shows the unavailability message', async ({ page }) => {
     await page.goto('/book')
-    await page.waitForSelector('.card button', { timeout: 10_000 })
+    await page.waitForSelector('button.card', { timeout: 10_000 })
 
     // Select the first service.
-    await page.locator('.card button').first().click()
+    await page.locator('button.card').first().click()
     await page.getByRole('button', { name: /continue/i }).click()
 
     // Select the first worker.
-    await page.waitForSelector('.card button', { timeout: 10_000 })
-    await page.locator('.card button').first().click()
+    await page.waitForSelector('button.card', { timeout: 10_000 })
+    await page.locator('button.card').first().click()
 
     // Pick the nearest Sunday — typically closed for a barbershop.
     const nextSunday = new Date()
@@ -129,12 +129,12 @@ test.describe('booking — form validation', () => {
     // manipulation is not possible with a stepper; instead we use a helper.
     // We need to complete steps 1 and 2 first.
     await page.goto('/book')
-    await page.waitForSelector('.card button', { timeout: 10_000 })
-    await page.locator('.card button').first().click()
+    await page.waitForSelector('button.card', { timeout: 10_000 })
+    await page.locator('button.card').first().click()
     await page.getByRole('button', { name: /continue/i }).click()
 
-    await page.waitForSelector('.card button', { timeout: 10_000 })
-    await page.locator('.card button').first().click()
+    await page.waitForSelector('button.card', { timeout: 10_000 })
+    await page.locator('button.card').first().click()
 
     // Find next open weekday.
     const d = new Date()

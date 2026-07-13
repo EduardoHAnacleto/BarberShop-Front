@@ -5,7 +5,22 @@ import type { Service, Worker } from '~/types'
 
 definePageMeta({ layout: 'default' })
 
-const { public: { apiBase } } = useRuntimeConfig()
+const config = useRuntimeConfig()
+
+// The SSR pass can't resolve the relative client apiBase (no browser origin
+// on the server) — use the internal Docker DNS there, exactly like useApi()
+// does (sprint070726 §4.8). Without this the server fetch fails silently and
+// getCachedData then re-serves the baked empty payload to the client, so the
+// services/team sections rendered permanently empty under SSR.
+const apiBase = import.meta.server
+  ? ((config.apiBaseInternal as string) || (config.public.apiBase as string))
+  : (config.public.apiBase as string)
+
+// Locale-aware paths for the footer's legal links ("/privacy" vs "/pt-BR/privacy").
+const localePath = useLocalePath()
+
+// White-label shop name for the footer copyright (sprint12072026license §4).
+const { shopName } = useShopIdentity()
 
 // ── Services — cached with useLazyFetch (S6.2) ──────────────────────────────
 // getCachedData re-uses Nuxt payload on back-navigation; avoids re-fetching
@@ -57,23 +72,23 @@ function formatDuration(minutes: number): string {
     <!-- ── Hero ── -->
     <section
       class="relative min-h-[90vh] flex flex-col items-center justify-center text-center px-4"
-      style="background: radial-gradient(ellipse at 50% 0%, rgba(201,168,76,0.1) 0%, transparent 65%), #0a0a0a"
+      style="background: radial-gradient(ellipse at 50% 0%, rgba(201,168,76,0.1) 0%, transparent 65%), var(--bg)"
     >
       <div class="relative z-10 max-w-3xl mx-auto">
         <!-- Shop open/closed indicator above the headline. -->
         <ScheduleIsOpenBanner class="justify-center mb-6" />
 
         <h1 class="font-display text-5xl sm:text-7xl font-bold text-gradient-gold leading-tight mb-4">
-          Premium<br>Barbershop
+          {{ $t('home.heroTitle') }}
         </h1>
         <p class="text-secondary text-lg sm:text-xl mb-10 max-w-xl mx-auto">
-          Expert cuts, classic shaves, and modern styles. Book your appointment today.
+          {{ $t('home.heroSubtitle') }}
         </p>
 
         <!-- Primary CTAs: book appointment or browse services. -->
         <div class="flex flex-wrap items-center justify-center gap-4">
-          <NuxtLink to="/book" class="btn-primary">Book Now</NuxtLink>
-          <a href="#services" class="btn-outline">Our Services</a>
+          <NuxtLink to="/book" class="btn-primary">{{ $t('home.bookNow') }}</NuxtLink>
+          <a href="#services" class="btn-outline">{{ $t('home.ourServices') }}</a>
         </div>
       </div>
     </section>
@@ -82,8 +97,8 @@ function formatDuration(minutes: number): string {
     <section id="services" class="py-20 px-4">
       <div class="max-w-6xl mx-auto">
         <div class="text-center mb-12">
-          <h2 class="font-display text-3xl text-primary mb-2">Our Services</h2>
-          <p class="text-secondary">Choose the perfect service for your style.</p>
+          <h2 class="font-display text-3xl text-primary mb-2">{{ $t('home.ourServices') }}</h2>
+          <p class="text-secondary">{{ $t('home.servicesSubtitle') }}</p>
         </div>
 
         <!-- Skeleton while data loads. -->
@@ -100,7 +115,7 @@ function formatDuration(minutes: number): string {
 
         <!-- Empty state. -->
         <p v-else-if="services.length === 0" class="text-center text-muted py-12">
-          No services available at the moment.
+          {{ $t('home.noServices') }}
         </p>
 
         <!-- Service cards. -->
@@ -120,7 +135,7 @@ function formatDuration(minutes: number): string {
               :to="`/book?serviceId=${svc.id}`"
               class="btn-primary text-sm text-center"
             >
-              Book this service
+              {{ $t('home.bookThisService') }}
             </NuxtLink>
           </div>
         </div>
@@ -131,8 +146,8 @@ function formatDuration(minutes: number): string {
     <section id="team" class="py-20 px-4 border-t border-border">
       <div class="max-w-6xl mx-auto">
         <div class="text-center mb-12">
-          <h2 class="font-display text-3xl text-primary mb-2">Meet the Team</h2>
-          <p class="text-secondary">Skilled professionals dedicated to your style.</p>
+          <h2 class="font-display text-3xl text-primary mb-2">{{ $t('home.meetTheTeam') }}</h2>
+          <p class="text-secondary">{{ $t('home.teamSubtitle') }}</p>
         </div>
 
         <!-- Skeleton while data loads. -->
@@ -149,7 +164,7 @@ function formatDuration(minutes: number): string {
 
         <!-- Empty state. -->
         <p v-else-if="workers.length === 0" class="text-center text-muted py-12">
-          No team members to display yet.
+          {{ $t('home.noTeam') }}
         </p>
 
         <!-- Worker cards. -->
@@ -199,7 +214,15 @@ function formatDuration(minutes: number): string {
 
     <!-- Footer -->
     <footer class="border-t border-border py-8 px-4 text-center text-muted text-sm">
-      <p>© {{ new Date().getFullYear() }} BarberShop. All rights reserved.</p>
+      <p>{{ $t('footer.copyright', { year: new Date().getFullYear(), shop: shopName }) }}</p>
+      <p class="mt-2 space-x-4">
+        <NuxtLink :to="localePath('/privacy')" class="hover:text-secondary transition-colors underline underline-offset-2">
+          {{ $t('legal.privacy.title') }}
+        </NuxtLink>
+        <NuxtLink :to="localePath('/terms')" class="hover:text-secondary transition-colors underline underline-offset-2">
+          {{ $t('legal.terms.title') }}
+        </NuxtLink>
+      </p>
     </footer>
   </div>
 </template>

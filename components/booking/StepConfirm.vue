@@ -3,6 +3,11 @@
 // Validates the form locally before emitting the confirm event.
 import type { Service, Worker } from '~/types'
 
+const { locale } = useI18n()
+// Locale-aware paths for the terms/privacy consent links below the submit
+// button — anonymous booking is where a visitor first hands over name/email.
+const localePath = useLocalePath()
+
 const props = defineProps<{
   // The service selected in step 1.
   service: Service
@@ -41,10 +46,10 @@ const isValid = computed(
   () => name.value.trim().length > 0 && emailRegex.test(email.value),
 )
 
-// Formats an ISO date string as "Month DD, YYYY".
+// Formats an ISO date string as "Month DD, YYYY" (localized to the active locale).
 function fmtDate(iso: string): string {
   const d = new Date(iso)
-  return d.toLocaleDateString('en-US', { month: 'long', day: '2-digit', year: 'numeric' })
+  return d.toLocaleDateString(locale.value, { month: 'long', day: '2-digit', year: 'numeric' })
 }
 
 // Formats a price value as a dollar-prefixed string.
@@ -75,12 +80,12 @@ function submit(): void {
   <div class="space-y-6">
     <!-- Booking summary card. -->
     <div class="card space-y-4">
-      <h2 class="font-display text-xl text-primary">Booking Summary</h2>
+      <h2 class="font-display text-xl text-primary">{{ $t('bookingConfirm.summaryTitle') }}</h2>
 
       <!-- Service details. -->
       <div class="flex items-start justify-between gap-4">
         <div>
-          <p class="text-xs text-muted uppercase tracking-wider font-mono mb-0.5">Service</p>
+          <p class="text-xs text-muted uppercase tracking-wider font-mono mb-0.5">{{ $t('bookingConfirm.service') }}</p>
           <p class="text-primary font-medium">{{ service.name }}</p>
           <p class="text-secondary text-sm">{{ fmtDuration(service.duration) }}</p>
         </div>
@@ -91,7 +96,7 @@ function submit(): void {
 
       <!-- Worker. -->
       <div>
-        <p class="text-xs text-muted uppercase tracking-wider font-mono mb-0.5">Professional</p>
+        <p class="text-xs text-muted uppercase tracking-wider font-mono mb-0.5">{{ $t('bookingConfirm.professional') }}</p>
         <p class="text-primary font-medium">{{ worker.name }}</p>
         <p class="text-secondary text-sm">{{ worker.position }}</p>
       </div>
@@ -99,11 +104,11 @@ function submit(): void {
       <!-- Date & time. -->
       <div class="flex gap-6">
         <div>
-          <p class="text-xs text-muted uppercase tracking-wider font-mono mb-0.5">Date</p>
+          <p class="text-xs text-muted uppercase tracking-wider font-mono mb-0.5">{{ $t('bookingConfirm.date') }}</p>
           <p class="text-primary">{{ fmtDate(selectedDate) }}</p>
         </div>
         <div>
-          <p class="text-xs text-muted uppercase tracking-wider font-mono mb-0.5">Time</p>
+          <p class="text-xs text-muted uppercase tracking-wider font-mono mb-0.5">{{ $t('bookingConfirm.time') }}</p>
           <p class="text-primary font-mono">{{ selectedTime }}</p>
         </div>
       </div>
@@ -116,13 +121,13 @@ function submit(): void {
             v-model="repeatWeekly"
             type="checkbox"
             autocomplete="off"
-            class="w-4 h-4 rounded border-border bg-surface-elev text-gold-500
+            class="w-4 h-4 rounded border-border bg-raised text-gold-500
                    focus:ring-gold-500/40 cursor-pointer"
           >
-          Repeat this appointment weekly
+          {{ $t('bookingConfirm.repeatWeekly') }}
         </label>
         <div v-if="repeatWeekly" class="mt-2 flex items-center gap-2">
-          <label for="repeat-weeks" class="text-sm text-secondary">For</label>
+          <label for="repeat-weeks" class="text-sm text-secondary">{{ $t('bookingConfirm.for') }}</label>
           <input
             id="repeat-weeks"
             v-model.number="repeatWeeks"
@@ -131,18 +136,18 @@ function submit(): void {
             max="12"
             class="input w-20"
           >
-          <span class="text-sm text-secondary">weeks (same day &amp; time)</span>
+          <span class="text-sm text-secondary">{{ $t('bookingConfirm.weeksSameDayTime') }}</span>
         </div>
       </div>
     </div>
 
     <!-- Customer details form. -->
     <form class="space-y-4" @submit.prevent="submit">
-      <h3 class="font-display text-lg text-primary">Your Details</h3>
+      <h3 class="font-display text-lg text-primary">{{ $t('bookingConfirm.yourDetails') }}</h3>
 
       <div>
         <label for="customer-name" class="block text-sm text-secondary mb-1">
-          Full Name <span class="text-gold-400">*</span>
+          {{ $t('bookingConfirm.fullName') }} <span class="text-gold-400">*</span>
         </label>
         <input
           id="customer-name"
@@ -157,7 +162,7 @@ function submit(): void {
 
       <div>
         <label for="customer-email" class="block text-sm text-secondary mb-1">
-          Email <span class="text-gold-400">*</span>
+          {{ $t('common.email') }} <span class="text-gold-400">*</span>
         </label>
         <input
           id="customer-email"
@@ -172,7 +177,7 @@ function submit(): void {
 
       <div>
         <label for="customer-phone" class="block text-sm text-secondary mb-1">
-          Phone
+          {{ $t('bookingConfirm.phone') }}
         </label>
         <input
           id="customer-phone"
@@ -190,9 +195,18 @@ function submit(): void {
         class="btn-primary w-full"
         :disabled="!isValid || submitting"
       >
-        <span v-if="submitting">Booking…</span>
-        <span v-else>Confirm Booking</span>
+        <span v-if="submitting">{{ $t('bookingConfirm.booking') }}</span>
+        <span v-else>{{ $t('bookingConfirm.confirmBooking') }}</span>
       </button>
+
+      <!-- Consent notice — this form is where an anonymous visitor first
+           provides personal data (name/email/phone). -->
+      <p class="text-center text-xs text-muted">
+        {{ $t('legal.agreeBookingPrefix') }}
+        <NuxtLink :to="localePath('/terms')" class="text-gold-400 hover:underline">{{ $t('legal.terms.title') }}</NuxtLink>
+        {{ $t('legal.agreeAnd') }}
+        <NuxtLink :to="localePath('/privacy')" class="text-gold-400 hover:underline">{{ $t('legal.privacy.title') }}</NuxtLink>.
+      </p>
     </form>
   </div>
 </template>

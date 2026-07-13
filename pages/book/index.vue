@@ -17,10 +17,11 @@ const { api } = useApi()
 const toast = useToast()
 const { isLoggedIn, userId, userEmail } = useAuth()
 const { onAppointmentsChanged } = useSignalR()
+const { t } = useI18n()
 
 // ── Step management ───────────────────────────────────────────────────────────
 
-const STEP_LABELS = ['Service', 'Professional & Time', 'Confirm']
+const STEP_LABELS = computed(() => [t('booking.stepService'), t('booking.stepWorkerTime'), t('booking.stepConfirm')])
 const step = ref(1)
 
 // ── Step 1 state ──────────────────────────────────────────────────────────────
@@ -49,6 +50,15 @@ const dayIsClosed = ref(false)
 const timeSlots = ref<string[]>([])
 
 const selectedTime = ref('')
+
+// True once the selected day's availability has loaded and come back open
+// with zero slots — as opposed to closed. Only then does "Join waitlist" make
+// sense (a closed day will never free up a slot).
+const dayIsFullyBooked = computed(
+  () => !dayIsClosed.value && !loadingSchedule.value && selectedDate.value !== '' && timeSlots.value.length === 0,
+)
+const joiningWaitlist = ref(false)
+const joinedWaitlistDates = ref(new Set<string>())
 
 // ── Step 3 state ──────────────────────────────────────────────────────────────
 
@@ -94,8 +104,8 @@ async function fetchWorkersByService(serviceId: number): Promise<void> {
   try {
     workers.value = await api.workers.workersByService(serviceId)
   } catch (err: unknown) {
-    const msg = (err as { response?: { data?: string } }).response?.data ?? 'Failed to load workers'
-    toast.error(typeof msg === 'string' ? msg : 'Failed to load workers')
+    const msg = (err as { response?: { data?: string } }).response?.data ?? t('booking.failedToLoadWorkers')
+    toast.error(typeof msg === 'string' ? msg : t('booking.failedToLoadWorkers'))
   } finally {
     workersLoading.value = false
   }
@@ -131,11 +141,11 @@ async function loadAvailability(): Promise<void> {
       selectedTime.value = ''
     }
     // An open day with no returned slots reads as "fully booked" rather than
-    // "closed"; only mark the day closed when the shop is genuinely shut.
-    dayIsClosed.value = result.slots.length === 0
+    // "closed"; the server tells us which one this is.
+    dayIsClosed.value = !result.isOpen
   } catch (err: unknown) {
-    const msg = (err as { response?: { data?: string } }).response?.data ?? 'Failed to load availability'
-    toast.error(typeof msg === 'string' ? msg : 'Failed to load availability')
+    const msg = (err as { response?: { data?: string } }).response?.data ?? t('booking.failedToLoadAvailability')
+    toast.error(typeof msg === 'string' ? msg : t('booking.failedToLoadAvailability'))
     dayIsClosed.value = true
   } finally {
     loadingSchedule.value = false
@@ -151,14 +161,56 @@ async function handleDateChange(date: string): Promise<void> {
   await loadAvailability()
 }
 
+// Whether the caller has already joined the waitlist for the worker+date
+// currently selected (tracked client-side for this session's UI state).
+const isOnWaitlistForSelection = computed(() =>
+  selectedWorker.value && selectedDate.value
+    ? joinedWaitlistDates.value.has(`${selectedWorker.value.id}:${selectedDate.value}`)
+    : false,
+)
+
+// Joining requires an account (the entry is tied to the caller's customer
+// record so we know who to email) — send anonymous visitors to log in first
+// rather than let the request 401.
+async function handleJoinWaitlist(): Promise<void> {
+  if (!selectedWorker.value || !selectedDate.value || !selectedService.value) return
+
+  if (!isLoggedIn.value) {
+    toast.error(t('booking.signInToJoinWaitlist'))
+    await router.push({ path: '/login', query: { redirect: route.fullPath } })
+    return
+  }
+
+  joiningWaitlist.value = true
+  try {
+    await api.waitlist.join({
+      workerId: selectedWorker.value.id,
+      serviceId: selectedService.value.id,
+      preferredDate: selectedDate.value,
+    })
+    joinedWaitlistDates.value.add(`${selectedWorker.value.id}:${selectedDate.value}`)
+    toast.success(t('booking.joinedWaitlist'))
+  } catch (err: unknown) {
+    const msg = (err as { response?: { data?: string } }).response?.data ?? t('booking.couldNotJoinWaitlist')
+    toast.error(typeof msg === 'string' ? msg : t('booking.couldNotJoinWaitlist'))
+  } finally {
+    joiningWaitlist.value = false
+  }
+}
+
 // Live updates: when any appointment changes on the server, refresh the slots
 // for the day being viewed so two users cannot grab the same time. The SDK
 // already reconnects automatically; the subscription cleans itself up on
-// unmount via the returned unsubscribe.
-const unsubscribeSlots = onAppointmentsChanged(() => {
-  if (selectedDate.value) loadAvailability()
+// unmount via the returned unsubscribe. Deferred to onMounted (rather than
+// subscribing at top-level script scope) since it's a WebSocket connection —
+// meaningless, and unsupported by the SignalR client, during SSR.
+let unsubscribeSlots: (() => void) | null = null
+onMounted(() => {
+  unsubscribeSlots = onAppointmentsChanged(() => {
+    if (selectedDate.value) loadAvailability()
+  })
 })
-onUnmounted(() => unsubscribeSlots())
+onUnmounted(() => unsubscribeSlots?.())
 
 // ── Booking submission ────────────────────────────────────────────────────────
 
@@ -234,8 +286,8 @@ async function handleConfirm(
     })
   } catch (err: unknown) {
     const msg =
-      (err as { response?: { data?: string } }).response?.data ?? 'Booking failed. Please try again.'
-    toast.error(typeof msg === 'string' ? msg : 'Booking failed. Please try again.')
+      (err as { response?: { data?: string } }).response?.data ?? t('booking.bookingFailed')
+    toast.error(typeof msg === 'string' ? msg : t('booking.bookingFailed'))
   } finally {
     submitting.value = false
   }
@@ -256,8 +308,8 @@ onMounted(async () => {
   try {
     services.value = await api.services.all()
   } catch (err: unknown) {
-    const msg = (err as { response?: { data?: string } }).response?.data ?? 'Failed to load services'
-    toast.error(typeof msg === 'string' ? msg : 'Failed to load services')
+    const msg = (err as { response?: { data?: string } }).response?.data ?? t('booking.failedToLoadServices')
+    toast.error(typeof msg === 'string' ? msg : t('booking.failedToLoadServices'))
   } finally {
     servicesLoading.value = false
   }
@@ -307,8 +359,8 @@ onMounted(async () => {
     <div class="max-w-2xl mx-auto px-4 py-12">
       <!-- Page header. -->
       <div class="mb-8">
-        <h1 class="font-display text-3xl text-primary mb-1">Book an Appointment</h1>
-        <p class="text-secondary text-sm">Complete the steps below to schedule your visit.</p>
+        <h1 class="font-display text-3xl text-primary mb-1">{{ $t('booking.pageTitle') }}</h1>
+        <p class="text-secondary text-sm">{{ $t('booking.pageSubtitle') }}</p>
       </div>
 
       <!-- Step indicator. -->
@@ -333,12 +385,16 @@ onMounted(async () => {
         :selected-worker-id="selectedWorker?.id ?? null"
         :selected-date="selectedDate"
         :day-is-closed="dayIsClosed"
+        :day-is-fully-booked="dayIsFullyBooked"
         :loading-schedule="loadingSchedule"
         :time-slots="timeSlots"
         :selected-time="selectedTime"
+        :on-waitlist="isOnWaitlistForSelection"
+        :joining-waitlist="joiningWaitlist"
         @select-worker="selectWorker"
         @select-date="handleDateChange"
         @select-time="(t) => (selectedTime = t)"
+        @join-waitlist="handleJoinWaitlist"
       />
 
       <BookingStepConfirm
@@ -355,17 +411,17 @@ onMounted(async () => {
       <!-- Navigation buttons (not shown on step 3 — the form has its own submit). -->
       <div v-if="step < 3" class="flex items-center justify-between mt-8">
         <button v-if="step > 1" type="button" class="btn-ghost" @click="goBack">
-          ← Back
+          ← {{ $t('booking.back') }}
         </button>
         <span v-else />
         <button type="button" class="btn-primary" :disabled="!canAdvance" @click="goNext">
-          Continue →
+          {{ $t('booking.continue') }} →
         </button>
       </div>
 
       <!-- Back button on step 3 (sits above the form's own Confirm submit). -->
       <div v-if="step === 3" class="mt-4">
-        <button type="button" class="btn-ghost text-sm" @click="goBack">← Back</button>
+        <button type="button" class="btn-ghost text-sm" @click="goBack">← {{ $t('booking.back') }}</button>
       </div>
     </div>
   </div>

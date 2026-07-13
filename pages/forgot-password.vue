@@ -6,6 +6,7 @@ definePageMeta({ layout: 'default' })
 
 const { api } = useApi()
 const toast = useToast()
+const { t } = useI18n()
 
 const email = ref('')
 const submitting = ref(false)
@@ -17,8 +18,8 @@ async function handleSubmit(): Promise<void> {
     await api.auth.forgotPassword(email.value.trim())
     submitted.value = true
   } catch (err: unknown) {
-    const msg = (err as { response?: { data?: string } }).response?.data ?? 'Something went wrong. Please try again.'
-    toast.error(typeof msg === 'string' ? msg : 'Something went wrong. Please try again.')
+    const msg = (err as { response?: { data?: string } }).response?.data ?? t('common.somethingWentWrong')
+    toast.error(typeof msg === 'string' ? msg : t('common.somethingWentWrong'))
   } finally {
     submitting.value = false
   }
@@ -42,19 +43,19 @@ async function handleSubmit(): Promise<void> {
         >
           <span class="font-display font-bold text-gold-400 text-2xl">B</span>
         </div>
-        <h1 class="font-display text-2xl text-primary">Reset your password</h1>
-        <p class="text-secondary text-sm mt-1">We'll email you a link to choose a new one.</p>
+        <h1 class="font-display text-2xl text-primary">{{ $t('forgotPassword.title') }}</h1>
+        <p class="text-secondary text-sm mt-1">{{ $t('forgotPassword.subtitle') }}</p>
       </div>
 
       <!-- Success state — same message regardless of whether the email exists. -->
       <div v-if="submitted" class="card text-center space-y-3">
-        <p class="text-primary">If that email is registered, a reset link is on its way.</p>
-        <p class="text-secondary text-sm">Check your inbox — the link expires in 1 hour.</p>
+        <p class="text-primary">{{ $t('forgotPassword.successMessage') }}</p>
+        <p class="text-secondary text-sm">{{ $t('forgotPassword.checkInbox') }}</p>
       </div>
 
       <form v-else class="space-y-4" @submit.prevent="handleSubmit">
         <div class="form-group">
-          <label class="label" for="forgot-email">Email</label>
+          <label class="label" for="forgot-email">{{ $t('common.email') }}</label>
           <input
             id="forgot-email"
             v-model="email"
@@ -68,13 +69,13 @@ async function handleSubmit(): Promise<void> {
 
         <button type="submit" class="btn-primary w-full" :disabled="submitting">
           <span v-if="submitting" class="w-4 h-4 border-2 border-obsidian-950/40 border-t-obsidian-950 rounded-full animate-spin" />
-          <span>{{ submitting ? 'Sending…' : 'Send reset link' }}</span>
+          <span>{{ submitting ? $t('forgotPassword.sending') : $t('forgotPassword.sendLink') }}</span>
         </button>
       </form>
 
       <p class="text-center text-sm text-muted mt-5">
-        Remembered it?
-        <NuxtLink to="/login" class="text-gold-400 hover:underline ml-1">Back to sign in</NuxtLink>
+        {{ $t('forgotPassword.rememberedIt') }}
+        <NuxtLink to="/login" class="text-gold-400 hover:underline ml-1">{{ $t('forgotPassword.backToSignIn') }}</NuxtLink>
       </p>
     </div>
   </div>

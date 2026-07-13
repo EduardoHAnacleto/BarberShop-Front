@@ -7,6 +7,11 @@ definePageMeta({ layout: 'default' })
 const { setToken, isLoggedIn } = useAuth()
 const { api } = useApi()
 const toast = useToast()
+const { t } = useI18n()
+// Locale-aware paths for the terms/privacy consent links below the form.
+const localePath = useLocalePath()
+// White-label logo monogram (sprint12072026license §4).
+const { monogram } = useShopIdentity()
 
 // Form state.
 const form = reactive({
@@ -59,7 +64,7 @@ async function handleRegister(): Promise<void> {
     setTimeout(() => navigateTo('/my'), 3000)
   } catch (err: unknown) {
     const raw = (err as { response?: { data?: unknown } }).response?.data
-    const msg = typeof raw === 'string' ? raw : 'Registration failed. Please try again.'
+    const msg = typeof raw === 'string' ? raw : t('register.failed')
     toast.error(msg)
   } finally {
     loading.value = false
@@ -86,12 +91,12 @@ async function handleRegister(): Promise<void> {
             <path d="M20 6L9 17l-5-5" />
           </svg>
         </div>
-        <h1 class="font-display text-2xl text-primary">Account created!</h1>
+        <h1 class="font-display text-2xl text-primary">{{ $t('register.successTitle') }}</h1>
         <p class="text-secondary text-sm">
-          Welcome, {{ form.name.split(' ')[0] }}!<br>
-          Redirecting you to the home page…
+          {{ $t('register.welcome', { name: form.name.split(' ')[0] }) }}<br>
+          {{ $t('register.redirecting') }}
         </p>
-        <NuxtLink to="/my" class="btn-primary inline-block mt-2">Go now →</NuxtLink>
+        <NuxtLink to="/my" class="btn-primary inline-block mt-2">{{ $t('register.goNow') }}</NuxtLink>
       </div>
 
       <!-- ── Registration form ── -->
@@ -102,15 +107,15 @@ async function handleRegister(): Promise<void> {
             class="w-14 h-14 rounded-xl bg-gold-500/20 border border-gold-500/30
                    flex items-center justify-center mx-auto mb-4"
           >
-            <span class="font-display font-bold text-gold-400 text-2xl">B</span>
+            <span class="font-display font-bold text-gold-400 text-2xl">{{ monogram }}</span>
           </div>
-          <h1 class="font-display text-2xl text-primary">Create an account</h1>
-          <p class="text-secondary text-sm mt-1">Book appointments and manage your profile.</p>
+          <h1 class="font-display text-2xl text-primary">{{ $t('register.title') }}</h1>
+          <p class="text-secondary text-sm mt-1">{{ $t('register.subtitle') }}</p>
         </div>
 
         <form class="space-y-4" @submit.prevent="handleRegister">
           <div class="form-group">
-            <label class="label" for="reg-name">Full Name</label>
+            <label class="label" for="reg-name">{{ $t('register.fullName') }}</label>
             <input
               id="reg-name"
               v-model="form.name"
@@ -123,7 +128,7 @@ async function handleRegister(): Promise<void> {
           </div>
 
           <div class="form-group">
-            <label class="label" for="reg-email">Email</label>
+            <label class="label" for="reg-email">{{ $t('common.email') }}</label>
             <input
               id="reg-email"
               v-model="form.email"
@@ -136,7 +141,7 @@ async function handleRegister(): Promise<void> {
           </div>
 
           <div class="form-group">
-            <label class="label" for="reg-password">Password</label>
+            <label class="label" for="reg-password">{{ $t('common.password') }}</label>
             <div class="relative">
               <input
                 id="reg-password"
@@ -144,13 +149,13 @@ async function handleRegister(): Promise<void> {
                 :type="showPassword ? 'text' : 'password'"
                 required
                 autocomplete="new-password"
-                placeholder="At least 6 characters"
+                :placeholder="$t('register.passwordPlaceholder')"
                 class="input w-full pr-10"
               >
               <button
                 type="button"
                 class="absolute right-3 top-1/2 -translate-y-1/2 text-muted hover:text-secondary transition-colors"
-                :aria-label="showPassword ? 'Hide password' : 'Show password'"
+                :aria-label="showPassword ? $t('common.hidePassword') : $t('common.showPassword')"
                 @click="showPassword = !showPassword"
               >
                 <SidebarIcon :icon="showPassword ? 'eye-off' : 'eye'" />
@@ -159,7 +164,7 @@ async function handleRegister(): Promise<void> {
           </div>
 
           <div class="form-group">
-            <label class="label" for="reg-phone">Phone <span class="text-muted">(optional)</span></label>
+            <label class="label" for="reg-phone">{{ $t('register.phone') }} <span class="text-muted">({{ $t('register.optional') }})</span></label>
             <input
               id="reg-phone"
               v-model="form.phone"
@@ -171,7 +176,7 @@ async function handleRegister(): Promise<void> {
           </div>
 
           <div class="form-group">
-            <label class="label" for="reg-dob">Date of Birth <span class="text-muted">(optional)</span></label>
+            <label class="label" for="reg-dob">{{ $t('register.dateOfBirth') }} <span class="text-muted">({{ $t('register.optional') }})</span></label>
             <input
               id="reg-dob"
               v-model="form.dateOfBirth"
@@ -190,16 +195,25 @@ async function handleRegister(): Promise<void> {
               v-if="loading"
               class="w-4 h-4 border-2 border-obsidian-950/40 border-t-obsidian-950 rounded-full animate-spin"
             />
-            <span>{{ loading ? 'Creating account…' : 'Create account' }}</span>
+            <span>{{ loading ? $t('register.creating') : $t('register.createAccount') }}</span>
           </button>
         </form>
 
+        <!-- Consent notice — account creation is the LGPD-relevant collection
+             point for a registered client's personal data. -->
+        <p class="text-center text-xs text-muted mt-4">
+          {{ $t('legal.agreeRegisterPrefix') }}
+          <NuxtLink :to="localePath('/terms')" class="text-gold-400 hover:underline">{{ $t('legal.terms.title') }}</NuxtLink>
+          {{ $t('legal.agreeAnd') }}
+          <NuxtLink :to="localePath('/privacy')" class="text-gold-400 hover:underline">{{ $t('legal.privacy.title') }}</NuxtLink>.
+        </p>
+
         <p class="text-center text-sm text-muted mt-6">
-          Already have an account?
-          <NuxtLink to="/login" class="text-gold-400 hover:underline ml-1">Sign in</NuxtLink>
+          {{ $t('register.alreadyHaveAccount') }}
+          <NuxtLink to="/login" class="text-gold-400 hover:underline ml-1">{{ $t('login.signIn') }}</NuxtLink>
         </p>
         <p class="text-center text-sm text-muted mt-2">
-          <NuxtLink to="/" class="text-secondary hover:text-primary transition-colors">← Back to home</NuxtLink>
+          <NuxtLink to="/" class="text-secondary hover:text-primary transition-colors">← {{ $t('common.backToHome') }}</NuxtLink>
         </p>
       </template>
     </div>

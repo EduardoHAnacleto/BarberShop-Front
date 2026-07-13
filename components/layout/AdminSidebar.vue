@@ -25,6 +25,7 @@ const nav = [
   { label: 'Services', to: '/admin/services', icon: 'scissors' },
   { label: 'Reviews', to: '/admin/reviews', icon: 'star' },
   { label: 'Schedule', to: '/admin/schedule', icon: 'clock' },
+  { label: 'Worker Schedules', to: '/admin/worker-schedules', icon: 'calendar' },
   { label: 'Users', to: '/admin/users', icon: 'shield' },
 ]
 
@@ -35,6 +36,16 @@ function isActive(to: string): boolean {
   return route.path.startsWith(to)
 }
 
+// White-label identity (sprint12072026license §4) — same source as the
+// public navbar: NUXT_PUBLIC_SHOP_NAME per rented instance.
+const { shopName, monogram } = useShopIdentity()
+
+// Dark/light toggle (sprint070726 §4.5).
+const colorMode = useColorMode()
+const isDark = computed(() => colorMode.value === 'dark')
+function toggleTheme(): void {
+  colorMode.preference = isDark.value ? 'light' : 'dark'
+}
 </script>
 
 <template>
@@ -66,11 +77,11 @@ function isActive(to: string): boolean {
         class="w-8 h-8 rounded-lg bg-gold-500/20 border border-gold-500/30 flex items-center
                justify-center flex-shrink-0"
       >
-        <span class="font-display font-bold text-gold-400 text-sm">B</span>
+        <span class="font-display font-bold text-gold-400 text-sm">{{ monogram }}</span>
       </div>
       <Transition name="fade-text">
         <div v-if="!collapsed" class="overflow-hidden flex-1">
-          <p class="font-display font-semibold text-primary text-sm leading-tight">BarberShop</p>
+          <p class="font-display font-semibold text-primary text-sm leading-tight">{{ shopName }}</p>
           <p class="text-muted text-xs font-mono">Admin</p>
         </div>
       </Transition>
@@ -125,6 +136,20 @@ function isActive(to: string): boolean {
           {{ userEmail }}
         </p>
       </Transition>
+
+      <!-- Dark/light toggle. -->
+      <ClientOnly>
+        <button
+          class="sidebar-link w-full"
+          :aria-label="isDark ? 'Switch to light mode' : 'Switch to dark mode'"
+          @click="toggleTheme"
+        >
+          <SidebarIcon :icon="isDark ? 'sun' : 'moon'" class="flex-shrink-0" />
+          <Transition name="fade-text">
+            <span v-if="!collapsed" class="truncate">{{ isDark ? 'Light mode' : 'Dark mode' }}</span>
+          </Transition>
+        </button>
+      </ClientOnly>
 
       <!-- Toggle collapse. -->
       <button

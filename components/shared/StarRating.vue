@@ -12,12 +12,16 @@ const props = withDefaults(
   { count: 0 },
 )
 
+const { t } = useI18n()
+
 const filledStars = computed(() => Math.round(props.rating))
 
 const label = computed(() =>
   props.count > 0
-    ? `${props.rating.toFixed(1)} out of 5 stars from ${props.count} review${props.count === 1 ? '' : 's'}`
-    : 'No reviews yet',
+    ? props.count === 1
+      ? t('starRating.labelOne', { rating: props.rating.toFixed(1) })
+      : t('starRating.labelMany', { rating: props.rating.toFixed(1), count: props.count })
+    : t('starRating.noReviewsYet'),
 )
 </script>
 
@@ -28,12 +32,12 @@ const label = computed(() =>
         v-for="i in 5"
         :key="i"
         class="text-sm leading-none"
-        :class="i <= filledStars ? 'text-gold-400' : 'text-obsidian-700'"
+        :class="i <= filledStars ? 'text-gold-400' : 'text-muted'"
       >★</span>
     </span>
     <span v-if="count > 0" class="text-xs text-muted font-mono">
       {{ rating.toFixed(1) }} ({{ count }})
     </span>
-    <span v-else class="text-xs text-muted">No reviews</span>
+    <span v-else class="text-xs text-muted">{{ $t('starRating.noReviews') }}</span>
   </span>
 </template>

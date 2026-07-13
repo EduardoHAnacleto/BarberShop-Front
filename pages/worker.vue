@@ -12,12 +12,17 @@ definePageMeta({ layout: 'default', middleware: 'auth' })
 const { api } = useApi()
 const toast = useToast()
 const { userId } = useAuth()
+const { onAppointmentsChanged } = useSignalR()
 
 // ── State ─────────────────────────────────────────────────────────────────────
 
 const appointments = ref<Appointment[]>([])
 const pageLoading = ref(true)
 const noProfile = ref(false)
+
+// Resolved once from /users/me, then reused by the SignalR refetch below so a
+// live update doesn't have to re-resolve the profile.
+const workerId = ref<number | null>(null)
 
 // Active date-range filter — 'all' shows every appointment.
 const filter = ref<DateFilter>('all')
@@ -94,6 +99,20 @@ const noShowAppointment = (id: number) =>
 
 // ── Data loading ──────────────────────────────────────────────────────────────
 
+// Silent refetch of this worker's appointments — no skeleton, so a live
+// SignalR push doesn't flash the whole page. A background-refresh failure is
+// swallowed rather than disrupting the view the worker is already looking at.
+async function loadAppointments(): Promise<void> {
+  if (!workerId.value) return
+  try {
+    appointments.value = await api.appointments.byWorker(workerId.value)
+  } catch {
+    // Keep the current list on a transient refresh error.
+  }
+}
+
+let unsubscribe: (() => void) | null = null
+
 onMounted(async () => {
   if (!userId.value) { pageLoading.value = false; noProfile.value = true; return }
 
@@ -103,13 +122,21 @@ onMounted(async () => {
     const user = await api.users.me()
     if (!user.workerId) { noProfile.value = true; return }
 
+    workerId.value = user.workerId
     appointments.value = await api.appointments.byWorker(user.workerId)
   } catch {
     toast.error('Failed to load your schedule. Please try again.')
   } finally {
     pageLoading.value = false
   }
+
+  // Live-update the schedule when the appointments hub pushes a change — a
+  // client booking, rescheduling or cancelling a slot with this worker.
+  // (The backend broadcasts AppointmentsChanged on every appointment mutation.)
+  unsubscribe = onAppointmentsChanged(loadAppointments)
 })
+
+onUnmounted(() => unsubscribe?.())
 </script>
 
 <template>

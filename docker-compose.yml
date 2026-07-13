@@ -18,6 +18,9 @@ services:
       MSSQL_PID: "Express"
     volumes:
       - sqlserver_data:/var/opt/mssql
+      # BACKUP DATABASE writes on the *server's* filesystem — this volume is
+      # shared with the db-backup sidecar (profile "client", off by default).
+      - sqlserver_backups:/backups
     healthcheck:
       test:
         [
@@ -79,6 +82,10 @@ services:
           BEGIN ALTER TABLE [dbo].[Appointments] ADD [AppointmentReminder1hSentAt] DATETIME2 NULL; END
           IF NOT EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[Reviews]') AND type = 'U')
           BEGIN CREATE TABLE [dbo].[Reviews] ([ReviewId] INT NOT NULL IDENTITY(1,1), [ReviewAppointmentId] INT NOT NULL, [ReviewCustomerId] INT NOT NULL, [ReviewWorkerId] INT NOT NULL, [ReviewRating] INT NOT NULL, [ReviewComment] NVARCHAR(1000) NOT NULL DEFAULT '', [CreatedAt] DATETIME2 NOT NULL DEFAULT GETUTCDATE(), CONSTRAINT [PK_Reviews] PRIMARY KEY ([ReviewId]), CONSTRAINT [FK_Reviews_Appointments] FOREIGN KEY ([ReviewAppointmentId]) REFERENCES [dbo].[Appointments] ([AppointmentId]) ON DELETE CASCADE, CONSTRAINT [FK_Reviews_Customers] FOREIGN KEY ([ReviewCustomerId]) REFERENCES [dbo].[Customers] ([CustomerId]), CONSTRAINT [FK_Reviews_Workers] FOREIGN KEY ([ReviewWorkerId]) REFERENCES [dbo].[Workers] ([WorkerId]), CONSTRAINT [UQ_Reviews_AppointmentId] UNIQUE ([ReviewAppointmentId])); END
+          IF NOT EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[Waitlist]') AND type = 'U')
+          BEGIN CREATE TABLE [dbo].[Waitlist] ([WaitlistId] INT NOT NULL IDENTITY(1,1), [WaitlistCustomerId] INT NOT NULL, [WaitlistWorkerId] INT NOT NULL, [WaitlistServiceId] INT NOT NULL, [WaitlistPreferredDate] DATETIME2 NOT NULL, [CreatedAt] DATETIME2 NOT NULL DEFAULT GETUTCDATE(), [WaitlistNotifiedAt] DATETIME2 NULL, CONSTRAINT [PK_Waitlist] PRIMARY KEY ([WaitlistId]), CONSTRAINT [FK_Waitlist_Customers] FOREIGN KEY ([WaitlistCustomerId]) REFERENCES [dbo].[Customers] ([CustomerId]) ON DELETE CASCADE, CONSTRAINT [FK_Waitlist_Workers] FOREIGN KEY ([WaitlistWorkerId]) REFERENCES [dbo].[Workers] ([WorkerId]), CONSTRAINT [FK_Waitlist_Services] FOREIGN KEY ([WaitlistServiceId]) REFERENCES [dbo].[Services] ([ServiceId])); END
+          IF NOT EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[WorkerSchedules]') AND type = 'U')
+          BEGIN CREATE TABLE [dbo].[WorkerSchedules] ([Id] INT NOT NULL IDENTITY(1,1), [WorkerId] INT NOT NULL, [DayOfWeek] INT NOT NULL, [IsOpen] BIT NOT NULL DEFAULT 0, [OpenTime] TIME NULL, [CloseTime] TIME NULL, [BreakStart] TIME NULL, [BreakEnd] TIME NULL, CONSTRAINT [PK_WorkerSchedules] PRIMARY KEY ([Id]), CONSTRAINT [UQ_WorkerSchedules_WorkerId_DayOfWeek] UNIQUE ([WorkerId], [DayOfWeek]), CONSTRAINT [FK_WorkerSchedules_Workers] FOREIGN KEY ([WorkerId]) REFERENCES [dbo].[Workers] ([WorkerId]) ON DELETE CASCADE); END
           IF NOT EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[BusinessSchedules]') AND type = 'U')
           BEGIN CREATE TABLE [dbo].[BusinessSchedules] ([Id] INT NOT NULL IDENTITY(1,1), [DayOfWeek] INT NOT NULL, [IsOpen] BIT NOT NULL DEFAULT 0, [OpenTime] TIME NULL, [CloseTime] TIME NULL, [BreakStart] TIME NULL, [BreakEnd] TIME NULL, CONSTRAINT [PK_BusinessSchedules] PRIMARY KEY ([Id]), CONSTRAINT [UQ_BusinessSchedules_DayOfWeek] UNIQUE ([DayOfWeek])); END
           IF NOT EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[WorkingHours]') AND type = 'U')
@@ -140,6 +147,10 @@ services:
       args:
         NUXT_PUBLIC_API_BASE: https://${DOMAIN:-localhost}
         NUXT_PUBLIC_GOOGLE_CLIENT_ID: "${NUXT_PUBLIC_GOOGLE_CLIENT_ID:-}"
+        # White-label (sprint12072026license §4): shop identity + default
+        # locale are per-instance build args; the demo keeps the defaults.
+        NUXT_PUBLIC_SHOP_NAME: "${SHOP_NAME:-BarberShop}"
+        DEFAULT_LOCALE: "${DEFAULT_LOCALE:-en}"
         NUXT_PUBLIC_SHOP_ADDRESS: "${NUXT_PUBLIC_SHOP_ADDRESS:-1 Sky City, Victoria St W, Auckland CBD 1010, New Zealand}"
         NUXT_PUBLIC_SHOP_PHONE: "${NUXT_PUBLIC_SHOP_PHONE:-+64 9 000 0000}"
         NUXT_PUBLIC_SHOP_EMAIL: "${NUXT_PUBLIC_SHOP_EMAIL:-info@barbershop.com}"
@@ -149,6 +160,9 @@ services:
     container_name: barbershop-frontend
     environment:
       - NODE_ENV=production
+      # Runtime overrides — name and SEO base URL can change without a rebuild.
+      - NUXT_PUBLIC_SHOP_NAME=${SHOP_NAME:-BarberShop}
+      - NUXT_PUBLIC_I18N_BASE_URL=${I18N_BASE_URL:-http://localhost}
     depends_on:
       api:
         condition: service_healthy
@@ -173,6 +187,53 @@ services:
       - api
     restart: unless-stopped
 
+  # ── Database backup sidecar (rented client instances) ────────────────────────
+  # Off by default: only starts under `docker compose --profile client up -d`.
+  # Loops forever: BACKUP DATABASE → RESTORE VERIFYONLY → prune old .bak files
+  # beyond the retention limit → sleep. Backups land in the sqlserver_backups
+  # volume (shared with the sqlserver service, since BACKUP writes server-side).
+  # No WITH COMPRESSION — unsupported on the Express edition the stack runs.
+  db-backup:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    container_name: barbershop-db-backup
+    profiles: ["client"]
+    # Root only on the sidecar (never the DB itself): the named volume is
+    # created root-owned, but BACKUP DATABASE runs as the server's mssql user
+    # (uid 10001) — the chown below is what lets the server write into it.
+    user: root
+    depends_on:
+      sqlserver:
+        condition: service_healthy
+    environment:
+      SA_PASSWORD: "${SA_PASSWORD:-BarberShop@2024}"
+      BACKUP_INTERVAL_MINUTES: "${BACKUP_INTERVAL_MINUTES:-1440}"
+      BACKUP_RETENTION: "${BACKUP_RETENTION:-14}"
+    volumes:
+      - sqlserver_backups:/backups
+    entrypoint: /bin/bash
+    # sqlcmd -b is load-bearing: without it sqlcmd exits 0 even when the
+    # T-SQL fails, and the && chain would report success on a failed backup.
+    command:
+      - -c
+      - |
+        chown 10001:10001 /backups && chmod 770 /backups
+        while true; do
+          ts=$$(date +%Y%m%d-%H%M%S)
+          file="/backups/barbershop-$$ts.bak"
+          echo "[db-backup] starting backup to $$file"
+          /opt/mssql-tools18/bin/sqlcmd -S sqlserver -U sa -P "$$SA_PASSWORD" -C -b -l 30 \
+            -Q "BACKUP DATABASE [barbershop] TO DISK = N'$$file' WITH INIT" \
+            && /opt/mssql-tools18/bin/sqlcmd -S sqlserver -U sa -P "$$SA_PASSWORD" -C -b -l 30 \
+              -Q "RESTORE VERIFYONLY FROM DISK = N'$$file'" \
+            && echo "[db-backup] backup verified: $$file" \
+            || echo "[db-backup] BACKUP FAILED for $$file"
+          ls -1t /backups/*.bak 2>/dev/null | tail -n +$$((BACKUP_RETENTION + 1)) | xargs -r rm -- \
+            && echo "[db-backup] retention pruned to $$BACKUP_RETENTION file(s)"
+          sleep $$((BACKUP_INTERVAL_MINUTES * 60))
+        done
+    restart: unless-stopped
+
 volumes:
   sqlserver_data:
   redis_data:
+  sqlserver_backups:

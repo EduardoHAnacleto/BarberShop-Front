@@ -9,6 +9,10 @@ definePageMeta({ layout: 'default' })
 
 const route = useRoute()
 const config = useRuntimeConfig()
+const { t } = useI18n()
+
+// White-label shop name for the calendar-event copy (sprint12072026license §4).
+const { shopName } = useShopIdentity()
 
 // appointmentId is passed as a query param from the booking flow.
 const appointmentId = computed(() => route.query.appointmentId ?? null)
@@ -32,8 +36,10 @@ const calendarEvent = computed<CalendarEvent | null>(() => {
   if (!service || !scheduledFor || !duration) return null
 
   return {
-    title: `${service} at BarberShop`,
-    description: worker ? `with ${worker}` : 'BarberShop appointment',
+    title: t('bookingSuccess.calendarTitle', { service, shop: shopName.value }),
+    description: worker
+      ? t('bookingSuccess.calendarWithWorker', { worker })
+      : t('bookingSuccess.calendarDescription', { shop: shopName.value }),
     location: (config.public.shopAddress as string) ?? '',
     start: scheduledFor,
     durationMinutes: duration,
@@ -81,38 +87,41 @@ function downloadIcs(): void {
         </svg>
       </div>
 
-      <h1 class="font-display text-4xl text-primary mb-2">Booking Confirmed!</h1>
-      <p class="text-secondary text-lg mb-4">Your appointment has been scheduled.</p>
+      <h1 class="font-display text-4xl text-primary mb-2">{{ $t('bookingSuccess.title') }}</h1>
+      <p class="text-secondary text-lg mb-4">{{ $t('bookingSuccess.subtitle') }}</p>
 
       <!-- Recurring series summary — only present for "repeat weekly" bookings. -->
       <p v-if="recurringSummary" class="text-secondary text-sm mb-4">
-        Booked {{ recurringSummary.created }} weekly visit{{ recurringSummary.created === 1 ? '' : 's' }}.
+        {{ recurringSummary.created === 1
+          ? $t('bookingSuccess.bookedOne')
+          : $t('bookingSuccess.bookedMany', { count: recurringSummary.created }) }}
         <span v-if="recurringSummary.skipped > 0">
-          {{ recurringSummary.skipped }} date{{ recurringSummary.skipped === 1 ? ' was' : 's were' }}
-          already taken and skipped.
+          {{ recurringSummary.skipped === 1
+            ? $t('bookingSuccess.skippedOne')
+            : $t('bookingSuccess.skippedMany', { count: recurringSummary.skipped }) }}
         </span>
       </p>
 
       <!-- Appointment reference number. -->
       <div v-if="appointmentId" class="card inline-block px-6 py-3 mb-8">
-        <p class="text-xs text-muted uppercase tracking-wider font-mono mb-1">Appointment #</p>
+        <p class="text-xs text-muted uppercase tracking-wider font-mono mb-1">{{ $t('bookingSuccess.appointmentNumber') }}</p>
         <p class="font-mono text-2xl text-gold-400 font-bold">{{ appointmentId }}</p>
       </div>
 
       <!-- Add to calendar — only when we have the event details. -->
       <div v-if="calendarEvent" class="flex flex-wrap items-center justify-center gap-3 mb-6">
         <button type="button" class="btn-outline text-sm" @click="downloadIcs">
-          Download .ics
+          {{ $t('bookingSuccess.downloadIcs') }}
         </button>
         <a :href="googleUrl" target="_blank" rel="noopener" class="btn-outline text-sm">
-          Add to Google Calendar
+          {{ $t('bookingSuccess.addToGoogleCalendar') }}
         </a>
       </div>
 
       <!-- Navigation CTAs. -->
       <div class="flex flex-wrap items-center justify-center gap-4">
-        <NuxtLink to="/book" class="btn-primary">Book another</NuxtLink>
-        <NuxtLink to="/" class="btn-outline">Back to Home</NuxtLink>
+        <NuxtLink to="/book" class="btn-primary">{{ $t('bookingSuccess.bookAnother') }}</NuxtLink>
+        <NuxtLink to="/" class="btn-outline">{{ $t('bookingSuccess.backToHome') }}</NuxtLink>
       </div>
 
       <!-- Shop location — compact map so the customer knows where to go. -->

@@ -5,6 +5,7 @@ import dayjs from 'dayjs'
 import type { Appointment, ReportsSummary } from '~/types'
 
 const { api } = useApi()
+const { onAppointmentsChanged } = useSignalR()
 
 // Async-loaded chart components so Chart.js is not in the initial bundle.
 const DashboardAppointmentsByDayChart = defineAsyncComponent(
@@ -33,6 +34,19 @@ const reports = ref<ReportsSummary | null>(null)
 
 function fmtCurrency(value: number): string {
   return `$${value.toFixed(2)}`
+}
+
+// Revenue and top-performer analytics live outside any Pinia store, so
+// unlike the KPI counts above (computed from appointmentsStore, which
+// refetches itself on the hub) this dashboard must refresh them directly.
+// Best-effort: the analytics panel simply keeps its last good snapshot on
+// a transient failure.
+async function refreshReports(): Promise<void> {
+  try {
+    reports.value = await api.reports.summary()
+  } catch {
+    // Ignore.
+  }
 }
 
 // ── Shop open / closed banner ──────────────────────────────────────────────
@@ -95,6 +109,7 @@ function statusBadge(status: Appointment['status']): { cls: string; label: strin
 let unsubAppointments: (() => void) | null = null
 let unsubWorkers: (() => void) | null = null
 let unsubCustomers: (() => void) | null = null
+let unsubReports: (() => void) | null = null
 
 onMounted(async () => {
   await Promise.all([
@@ -109,18 +124,18 @@ onMounted(async () => {
   unsubWorkers = workersStore.subscribeRealtime()
   unsubCustomers = customersStore.subscribeRealtime()
 
-  // Best-effort: the analytics panel simply stays hidden on failure.
-  try {
-    reports.value = await api.reports.summary()
-  } catch {
-    // Ignore.
-  }
+  await refreshReports()
+  // A completed/cancelled appointment changes revenue even when the
+  // appointment list's composition doesn't otherwise need reloading, so
+  // this subscribes on its own rather than piggybacking on a store.
+  unsubReports = onAppointmentsChanged(refreshReports)
 })
 
 onUnmounted(() => {
   unsubAppointments?.()
   unsubWorkers?.()
   unsubCustomers?.()
+  unsubReports?.()
 })
 </script>
 
