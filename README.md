@@ -19,14 +19,32 @@ Designed as a production-inspired application to demonstrate modern software eng
 
 # 📸 Preview
 
-> *(Screenshot coming)*
-
 - Login
 - Dashboard
 - Appointment Calendar
 - Employee Portal
 - Customer Management
 - Analytics Dashboard
+
+- Anonymous Booking flow
+<p align="center">
+    <img src="assets/AnonymousBooking.gif" width="90%">
+</p>
+
+- Employee Panel
+<p align="center">
+    <img src="assets/Worker.gif" width="90%">
+</p>
+
+- Admin Panel
+<p align="center">
+    <img src="assets/AdminPanel.gif" width="90%">
+</p>
+
+- Instant Update of whole system using SignalR (From left to right: Customer Booking - Employee Panel - Admin Panel) 
+<p align="center">
+    <img src="assets/SignalRBooking.gif" width="90%">
+</p>
 
 ---
 
