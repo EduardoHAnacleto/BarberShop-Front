@@ -16,15 +16,21 @@ export const useWorkerScheduleStore = defineStore('workerSchedule', () => {
   // Set to the error message when the last operation failed; null otherwise.
   const error = ref<string | null>(null)
 
+  // The worker fetchByWorker was last called with — lets subscribeRealtime()
+  // re-fetch the right worker without the caller having to pass it again.
+  const lastWorkerId = ref<number | null>(null)
+
   // ── Dependencies ───────────────────────────────────────────────────────────
 
   const { api } = useApi()
   const toast = useToast()
+  const signalr = useSignalR()
 
   // ── Actions ────────────────────────────────────────────────────────────────
 
   // Loads the override rows for a worker, replacing the local list.
   async function fetchByWorker(workerId: number): Promise<void> {
+    lastWorkerId.value = workerId
     loading.value = true
     error.value = null
     try {
@@ -70,6 +76,15 @@ export const useWorkerScheduleStore = defineStore('workerSchedule', () => {
   // Clears the loaded overrides — used when the admin UI deselects a worker.
   function reset(): void {
     overrides.value = []
+    lastWorkerId.value = null
+  }
+
+  // Subscribes to the worker-schedules SignalR hub. No-ops until a worker has
+  // been selected — there's nothing to refresh before then.
+  function subscribeRealtime(): () => void {
+    return signalr.onWorkerSchedulesChanged(() => {
+      if (lastWorkerId.value) fetchByWorker(lastWorkerId.value)
+    })
   }
 
   return {
@@ -80,5 +95,6 @@ export const useWorkerScheduleStore = defineStore('workerSchedule', () => {
     upsert,
     removeOverride,
     reset,
+    subscribeRealtime,
   }
 })

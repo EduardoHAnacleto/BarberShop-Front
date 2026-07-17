@@ -103,3 +103,55 @@ describe('PublicNavbar — worker schedule link', () => {
     expect(scheduleLink(wrapper)).toBeFalsy()
   })
 })
+
+// Regression guard: below the md breakpoint the link row must collapse behind
+// a hamburger toggle instead of overflowing the header — it previously had no
+// mobile handling at all (always `flex`, no `hidden`/toggle), so on a phone
+// viewport the ~10 nav items just spilled past the screen edge.
+describe('PublicNavbar — mobile menu', () => {
+  it('starts closed: nav is hidden and the toggle reports collapsed', async () => {
+    meMock.mockResolvedValue({ id: 7, workerId: null, customerId: 2 })
+
+    const wrapper = await mountNavbar()
+
+    const toggle = wrapper.find('[data-testid="mobile-menu-toggle"]')
+    expect(toggle.attributes('aria-expanded')).toBe('false')
+    expect(wrapper.find('nav').classes()).toContain('hidden')
+    expect(wrapper.find('[data-testid="mobile-nav-overlay"]').exists()).toBe(false)
+  })
+
+  it('opens the nav and overlay when the toggle is clicked', async () => {
+    meMock.mockResolvedValue({ id: 7, workerId: null, customerId: 2 })
+
+    const wrapper = await mountNavbar()
+    await wrapper.find('[data-testid="mobile-menu-toggle"]').trigger('click')
+
+    expect(wrapper.find('[data-testid="mobile-menu-toggle"]').attributes('aria-expanded')).toBe('true')
+    expect(wrapper.find('nav').classes()).not.toContain('hidden')
+    expect(wrapper.find('[data-testid="mobile-nav-overlay"]').exists()).toBe(true)
+  })
+
+  it('closes when a nav link is clicked', async () => {
+    meMock.mockResolvedValue({ id: 7, workerId: null, customerId: 2 })
+
+    const wrapper = await mountNavbar()
+    await wrapper.find('[data-testid="mobile-menu-toggle"]').trigger('click')
+    expect(wrapper.find('nav').classes()).not.toContain('hidden')
+
+    await wrapper.find('nav a').trigger('click')
+
+    expect(wrapper.find('nav').classes()).toContain('hidden')
+  })
+
+  it('closes when the backdrop overlay is clicked', async () => {
+    meMock.mockResolvedValue({ id: 7, workerId: null, customerId: 2 })
+
+    const wrapper = await mountNavbar()
+    await wrapper.find('[data-testid="mobile-menu-toggle"]').trigger('click')
+
+    await wrapper.find('[data-testid="mobile-nav-overlay"]').trigger('click')
+
+    expect(wrapper.find('nav').classes()).toContain('hidden')
+    expect(wrapper.find('[data-testid="mobile-nav-overlay"]').exists()).toBe(false)
+  })
+})

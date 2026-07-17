@@ -1,6 +1,6 @@
 <script setup lang="ts">
 // Admin layout. Wraps all /admin/* pages with the sidebar, sticky header,
-// and real-time SignalR connections for all five hubs.
+// and real-time SignalR connections for all eight hubs.
 import dayjs from 'dayjs'
 
 const { connect, disconnectAll, isConnected } = useSignalR()
@@ -9,9 +9,12 @@ const { connect, disconnectAll, isConnected } = useSignalR()
 const sidebarOpen = ref(false)
 
 // Hub names that must be connected while any admin page is mounted.
-const HUBS = ['appointments', 'workers', 'customers', 'services', 'users'] as const
+const HUBS = [
+  'appointments', 'workers', 'customers', 'services', 'users',
+  'reviews', 'schedule', 'workerSchedules',
+] as const
 
-// Connect all five hubs in parallel on mount so real-time updates are active
+// Connect all eight hubs in parallel on mount so real-time updates are active
 // from the moment the first admin page loads. Errors are caught per-hub so
 // one failed connection does not prevent the rest from starting.
 onMounted(async () => {

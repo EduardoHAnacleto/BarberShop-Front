@@ -24,6 +24,7 @@ const mockApiAll = vi.hoisted(() => vi.fn())
 const mockApiDelete = vi.hoisted(() => vi.fn())
 const mockToastSuccess = vi.hoisted(() => vi.fn())
 const mockToastError = vi.hoisted(() => vi.fn())
+const mockOnReviewsChanged = vi.hoisted(() => vi.fn())
 
 mockNuxtImport('useApi', () => () => ({
   api: {
@@ -36,6 +37,10 @@ mockNuxtImport('useApi', () => () => ({
 
 mockNuxtImport('useToast', () => () => ({ success: mockToastSuccess, error: mockToastError }))
 
+mockNuxtImport('useSignalR', () => () => ({
+  onReviewsChanged: mockOnReviewsChanged,
+}))
+
 const { useReviewsStore } = await import('~/stores/reviews')
 
 beforeEach(() => {
@@ -44,6 +49,7 @@ beforeEach(() => {
   mockApiDelete.mockReset()
   mockToastSuccess.mockReset()
   mockToastError.mockReset()
+  mockOnReviewsChanged.mockReset()
 })
 
 describe('reviews store — fetchAll()', () => {
@@ -88,5 +94,32 @@ describe('reviews store — remove()', () => {
 
     expect(result).toBe(false)
     expect(mockToastError).toHaveBeenCalledWith('Review not found')
+  })
+})
+
+describe('reviews store — subscribeRealtime()', () => {
+  it('registers a callback via onReviewsChanged', () => {
+    const unsubscribe = vi.fn()
+    mockOnReviewsChanged.mockReturnValue(unsubscribe)
+
+    const store = useReviewsStore()
+    const result = store.subscribeRealtime()
+
+    expect(mockOnReviewsChanged).toHaveBeenCalledTimes(1)
+    expect(result).toBe(unsubscribe)
+  })
+
+  it('refetches the review list when the hub fires', async () => {
+    mockOnReviewsChanged.mockReturnValue(vi.fn())
+    mockApiAll.mockResolvedValue([])
+
+    const store = useReviewsStore()
+    store.subscribeRealtime()
+
+    const callback = mockOnReviewsChanged.mock.calls[0]?.[0] as () => void
+    expect(callback).toBeTypeOf('function')
+    callback()
+
+    expect(mockApiAll).toHaveBeenCalled()
   })
 })

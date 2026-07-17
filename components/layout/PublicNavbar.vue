@@ -24,6 +24,11 @@ watchEffect(async () => {
     isWorker.value = false
   }
 })
+
+// Mobile nav: below md the link row is a hamburger-toggled dropdown instead
+// of the always-visible inline row, which used to overflow the header on
+// narrow viewports (no responsive handling existed at all).
+const mobileMenuOpen = ref(false)
 </script>
 
 <template>
@@ -41,8 +46,45 @@ watchEffect(async () => {
         <span class="font-display text-lg text-primary">{{ shopName }}</span>
       </NuxtLink>
 
-      <!-- Page anchor links + auth CTAs. -->
-      <nav class="flex items-center gap-4 sm:gap-5">
+      <!-- Hamburger toggle — visible only below md, where the link row
+           collapses into a dropdown instead of overflowing the header. -->
+      <button
+        type="button"
+        data-testid="mobile-menu-toggle"
+        class="md:hidden p-2 -mr-2 text-secondary hover:text-primary transition-colors"
+        :aria-label="mobileMenuOpen ? $t('nav.closeMenu') : $t('nav.openMenu')"
+        :aria-expanded="mobileMenuOpen"
+        @click="mobileMenuOpen = !mobileMenuOpen"
+      >
+        <svg v-if="!mobileMenuOpen" class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M4 6h16M4 12h16M4 18h16" />
+        </svg>
+        <svg v-else class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+        </svg>
+      </button>
+
+      <!-- Backdrop — dims the page and closes the menu on an outside tap.
+           Mirrors the same overlay pattern as AdminSidebar's mobile drawer. -->
+      <div
+        v-if="mobileMenuOpen"
+        data-testid="mobile-nav-overlay"
+        class="fixed inset-0 md:hidden"
+        aria-hidden="true"
+        @click="mobileMenuOpen = false"
+      />
+
+      <!-- Page anchor links + auth CTAs.
+           Below md: hidden unless toggled open, then an absolutely-positioned
+           dropdown panel. From md up: always a normal inline row (unchanged). -->
+      <nav
+        class="flex-col items-stretch gap-1 absolute top-16 inset-x-0 bg-surface
+               border-b border-border p-4
+               md:relative md:inset-auto md:flex md:flex-row md:items-center md:gap-5
+               md:bg-transparent md:border-0 md:p-0"
+        :class="mobileMenuOpen ? 'flex' : 'hidden'"
+        @click="mobileMenuOpen = false"
+      >
         <NuxtLink to="/#services" class="text-sm text-secondary hover:text-primary transition-colors">
           {{ $t('nav.services') }}
         </NuxtLink>
@@ -73,8 +115,12 @@ watchEffect(async () => {
             <NuxtLink v-if="isAdmin" to="/admin" prefetch class="text-sm text-secondary hover:text-primary transition-colors">
               {{ $t('nav.admin') }}
             </NuxtLink>
-            <!-- User email + logout. -->
-            <div class="flex items-center gap-2 border-l border-border pl-4 ml-1">
+            <!-- User email + logout. Divider is a top border when stacked in
+                 the mobile dropdown, a left border in the desktop inline row. -->
+            <div
+              class="flex items-center gap-2 border-t md:border-t-0 md:border-l border-border
+                     pt-3 md:pt-0 md:pl-4 mt-2 md:mt-0 md:ml-1"
+            >
               <span class="hidden sm:block text-xs text-muted font-mono truncate max-w-[140px]">{{ userEmail }}</span>
               <button
                 type="button"

@@ -9,7 +9,15 @@ import {
 import type { HubConnection } from '@microsoft/signalr'
 
 // Union type of all hub identifiers used in the application.
-type HubName = 'appointments' | 'workers' | 'customers' | 'services' | 'users'
+type HubName =
+  | 'appointments'
+  | 'workers'
+  | 'customers'
+  | 'services'
+  | 'users'
+  | 'reviews'
+  | 'schedule'
+  | 'workerSchedules'
 
 // Maps each hub name to its WebSocket endpoint path on the API.
 const HUB_ROUTES: Record<HubName, string> = {
@@ -18,6 +26,9 @@ const HUB_ROUTES: Record<HubName, string> = {
   customers: '/customersHub',
   services: '/servicesHub',
   users: '/usersHub',
+  reviews: '/reviewsHub',
+  schedule: '/scheduleHub',
+  workerSchedules: '/workerSchedulesHub',
 }
 
 // Events emitted by each hub; the client subscribes to these to trigger
@@ -28,6 +39,9 @@ const HUB_EVENTS: Record<HubName, string[]> = {
   customers: ['CustomersChanged'],
   services: ['ServicesChanged'],
   users: ['UsersChanged'],
+  reviews: ['ReviewsChanged'],
+  schedule: ['ScheduleChanged'],
+  workerSchedules: ['WorkerSchedulesChanged'],
 }
 
 // Module-level maps — one entry per active hub connection.
@@ -164,6 +178,15 @@ export function useSignalR() {
   const onUsersChanged = (cb: () => void) =>
     subscribeWithReconnect('users', 'UsersChanged', cb)
 
+  const onReviewsChanged = (cb: () => void) =>
+    subscribeWithReconnect('reviews', 'ReviewsChanged', cb)
+
+  const onScheduleChanged = (cb: () => void) =>
+    subscribeWithReconnect('schedule', 'ScheduleChanged', cb)
+
+  const onWorkerSchedulesChanged = (cb: () => void) =>
+    subscribeWithReconnect('workerSchedules', 'WorkerSchedulesChanged', cb)
+
   return {
     connect,
     disconnect,
@@ -174,6 +197,9 @@ export function useSignalR() {
     onCustomersChanged,
     onServicesChanged,
     onUsersChanged,
+    onReviewsChanged,
+    onScheduleChanged,
+    onWorkerSchedulesChanged,
     isConnected: readonly(isConnectedRef),
   }
 }

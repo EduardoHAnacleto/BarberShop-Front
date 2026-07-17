@@ -14,6 +14,7 @@ const mockRemoveClosure = vi.hoisted(() => vi.fn())
 const mockIsOpen = vi.hoisted(() => vi.fn())
 const mockToastSuccess = vi.hoisted(() => vi.fn())
 const mockToastError = vi.hoisted(() => vi.fn())
+const mockOnScheduleChanged = vi.hoisted(() => vi.fn())
 
 mockNuxtImport('useApi', () => () => ({
   api: {
@@ -30,6 +31,10 @@ mockNuxtImport('useApi', () => () => ({
 
 mockNuxtImport('useToast', () => () => ({ success: mockToastSuccess, error: mockToastError }))
 
+mockNuxtImport('useSignalR', () => () => ({
+  onScheduleChanged: mockOnScheduleChanged,
+}))
+
 const { useScheduleStore } = await import('~/stores/schedule')
 
 beforeEach(() => {
@@ -42,6 +47,7 @@ beforeEach(() => {
   mockIsOpen.mockReset()
   mockToastSuccess.mockReset()
   mockToastError.mockReset()
+  mockOnScheduleChanged.mockReset()
 })
 
 // ── Tests ─────────────────────────────────────────────────────────────────────
@@ -145,5 +151,34 @@ describe('schedule store — checkIsOpen()', () => {
     const result = await store.checkIsOpen('2026-05-14T15:00:00Z')
 
     expect(result).toBe(false)
+  })
+})
+
+describe('schedule store — subscribeRealtime()', () => {
+  it('registers a callback via onScheduleChanged', () => {
+    const unsubscribe = vi.fn()
+    mockOnScheduleChanged.mockReturnValue(unsubscribe)
+
+    const store = useScheduleStore()
+    const result = store.subscribeRealtime()
+
+    expect(mockOnScheduleChanged).toHaveBeenCalledTimes(1)
+    expect(result).toBe(unsubscribe)
+  })
+
+  it('re-fetches both the weekly schedule and closures when the hub fires', async () => {
+    mockOnScheduleChanged.mockReturnValue(vi.fn())
+    mockGetSchedule.mockResolvedValue([])
+    mockGetClosures.mockResolvedValue([])
+
+    const store = useScheduleStore()
+    store.subscribeRealtime()
+
+    const callback = mockOnScheduleChanged.mock.calls[0]?.[0] as () => void
+    expect(callback).toBeTypeOf('function')
+    callback()
+
+    expect(mockGetSchedule).toHaveBeenCalled()
+    expect(mockGetClosures).toHaveBeenCalled()
   })
 })

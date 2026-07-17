@@ -23,6 +23,7 @@ export const useScheduleStore = defineStore('schedule', () => {
 
   const { api } = useApi()
   const toast = useToast()
+  const signalr = useSignalR()
 
   // ── Actions ────────────────────────────────────────────────────────────────
 
@@ -106,6 +107,16 @@ export const useScheduleStore = defineStore('schedule', () => {
     }
   }
 
+  // Subscribes to the schedule SignalR hub. A single ScheduleChanged event
+  // covers both the weekly schedule and exceptional closures, so both are
+  // re-fetched — either can change what "shop is open" means.
+  function subscribeRealtime(): () => void {
+    return signalr.onScheduleChanged(() => {
+      fetchSchedule()
+      fetchClosures()
+    })
+  }
+
   return {
     schedules,
     closures,
@@ -117,5 +128,6 @@ export const useScheduleStore = defineStore('schedule', () => {
     addClosure,
     removeClosure,
     checkIsOpen,
+    subscribeRealtime,
   }
 })

@@ -10,7 +10,9 @@
     "signOut": "Sign out",
     "register": "Register",
     "signIn": "Sign In",
-    "staffLogin": "Staff Login"
+    "staffLogin": "Staff Login",
+    "openMenu": "Open menu",
+    "closeMenu": "Close menu"
   },
   "home": {
     "heroTitle": "Premium Barbershop",

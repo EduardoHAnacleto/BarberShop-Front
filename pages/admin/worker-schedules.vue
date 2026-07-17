@@ -142,12 +142,17 @@ async function revertRow(day: number): Promise<void> {
 
 // ── Lifecycle ───────────────────────────────────────────────────────────────
 
+let unsubscribe: (() => void) | null = null
+
 onMounted(async () => {
   await Promise.all([
     workers.value.length === 0 ? workersStore.fetchAll() : Promise.resolve(),
     shopSchedules.value.length === 0 ? scheduleStore.fetchSchedule() : Promise.resolve(),
   ])
+  unsubscribe = workerScheduleStore.subscribeRealtime()
 })
+
+onUnmounted(() => unsubscribe?.())
 </script>
 
 <template>

@@ -10,7 +10,9 @@
     "signOut": "Sair",
     "register": "Cadastrar",
     "signIn": "Entrar",
-    "staffLogin": "Login da Equipe"
+    "staffLogin": "Login da Equipe",
+    "openMenu": "Abrir menu",
+    "closeMenu": "Fechar menu"
   },
   "home": {
     "heroTitle": "Barbearia Premium",

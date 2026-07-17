@@ -1,5 +1,4 @@
-// Pinia store for admin review moderation. No realtime hub — the list only
-// needs to be fresh when the admin opens the page.
+// Pinia store for admin review moderation.
 import type { Review } from '~/types'
 
 export const useReviewsStore = defineStore('reviews', () => {
@@ -9,6 +8,7 @@ export const useReviewsStore = defineStore('reviews', () => {
 
   const { api } = useApi()
   const toast = useToast()
+  const signalr = useSignalR()
 
   async function fetchAll(): Promise<void> {
     loading.value = true
@@ -36,5 +36,10 @@ export const useReviewsStore = defineStore('reviews', () => {
     }
   }
 
-  return { items, loading, error, fetchAll, remove }
+  // Subscribes to the reviews SignalR hub.
+  function subscribeRealtime(): () => void {
+    return signalr.onReviewsChanged(() => fetchAll())
+  }
+
+  return { items, loading, error, fetchAll, remove, subscribeRealtime }
 })

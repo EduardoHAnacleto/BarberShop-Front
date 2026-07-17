@@ -23,6 +23,7 @@ mockNuxtImport('definePageMeta', () => vi.fn())
 // store's own subscription and the dashboard's new reports subscription)
 // so the test can fire them like the SignalR hub would.
 const appointmentsCallbacks: Array<() => void> = []
+const scheduleCallbacks: Array<() => void> = []
 
 mockNuxtImport('useSignalR', () => () => ({
   connect: vi.fn().mockResolvedValue(undefined),
@@ -31,6 +32,10 @@ mockNuxtImport('useSignalR', () => () => ({
   isConnected: { value: false },
   onAppointmentsChanged: (cb: () => void) => {
     appointmentsCallbacks.push(cb)
+    return vi.fn()
+  },
+  onScheduleChanged: (cb: () => void) => {
+    scheduleCallbacks.push(cb)
     return vi.fn()
   },
   onWorkersChanged: vi.fn().mockReturnValue(vi.fn()),
@@ -42,14 +47,16 @@ mockNuxtImport('useSignalR', () => () => ({
 // ── MSW server ────────────────────────────────────────────────────────────────
 
 let reportsCallCount = 0
+let isOpenCallCount = 0
 
 const server = setupServer(
   http.get('http://localhost:8080/api/appointments/all', () => HttpResponse.json([])),
   http.get('http://localhost:8080/api/workers/all', () => HttpResponse.json([])),
   http.get('http://localhost:8080/api/customers/all', () => HttpResponse.json([])),
-  http.get('http://localhost:8080/api/working-hours/is-open', () =>
-    HttpResponse.json({ isOpen: true }),
-  ),
+  http.get('http://localhost:8080/api/working-hours/is-open', () => {
+    isOpenCallCount += 1
+    return HttpResponse.json({ isOpen: isOpenCallCount === 1 })
+  }),
   http.get('http://localhost:8080/api/reports/summary', () => {
     reportsCallCount += 1
     const revenue = reportsCallCount === 1 ? 100 : 250
@@ -69,7 +76,9 @@ beforeAll(() => server.listen({ onUnhandledRequest: 'warn' }))
 afterEach(() => {
   server.resetHandlers()
   appointmentsCallbacks.length = 0
+  scheduleCallbacks.length = 0
   reportsCallCount = 0
+  isOpenCallCount = 0
 })
 afterAll(() => server.close())
 
@@ -104,5 +113,19 @@ describe('/admin dashboard — revenue live updates', () => {
 
     expect(reportsCallCount).toBe(2)
     expect(wrapper.text()).toContain('$250.00')
+  })
+})
+
+describe('/admin dashboard — shop status live updates', () => {
+  it('refreshes the Shop Open/Closed badge when the schedule hub pushes a change', async () => {
+    const wrapper = await mountDashboard()
+    expect(wrapper.text()).toContain('Shop Open')
+
+    // Simulate the backend's ScheduleChanged broadcast — e.g. another admin
+    // just added an exceptional closure for right now.
+    scheduleCallbacks.forEach((cb) => cb())
+    await flushPromises()
+
+    expect(wrapper.text()).toContain('Shop Closed')
   })
 })

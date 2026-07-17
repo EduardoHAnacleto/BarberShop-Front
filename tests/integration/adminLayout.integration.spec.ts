@@ -1,5 +1,5 @@
 // Integration test for layouts/admin.vue.
-// Verifies that mounting the admin layout connects all 5 SignalR hubs and
+// Verifies that mounting the admin layout connects all 8 SignalR hubs and
 // unmounting calls disconnectAll().
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { mount } from '@vue/test-utils'
@@ -32,7 +32,7 @@ mockNuxtImport('useRoute', () => () => ({ path: '/admin' }))
 mockNuxtImport('useColorMode', () => () => ({ value: 'dark', preference: 'dark' }))
 
 describe('admin layout', () => {
-  it('calls connect() once for each of the 5 hubs on mount', async () => {
+  it('calls connect() once for each of the 8 hubs on mount', async () => {
     const { default: AdminLayout } = await import('~/layouts/admin.vue')
     mount(AdminLayout, { slots: { default: '<div>page</div>' } })
 
@@ -41,9 +41,12 @@ describe('admin layout', () => {
 
     const hubsCalled = mockConnect.mock.calls.map((c) => c[0]).sort()
     expect(hubsCalled).toEqual(
-      ['appointments', 'customers', 'services', 'users', 'workers'],
+      [
+        'appointments', 'customers', 'reviews', 'schedule',
+        'services', 'users', 'workerSchedules', 'workers',
+      ],
     )
-    expect(mockConnect).toHaveBeenCalledTimes(5)
+    expect(mockConnect).toHaveBeenCalledTimes(8)
   })
 
   it('calls disconnectAll() on unmount', async () => {

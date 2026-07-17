@@ -156,9 +156,14 @@ function closureUntilLabel(c: WorkingHours): string {
 
 // ── Lifecycle ───────────────────────────────────────────────────────────────
 
+let unsubscribe: (() => void) | null = null
+
 onMounted(async () => {
   await Promise.all([scheduleStore.fetchSchedule(), scheduleStore.fetchClosures()])
+  unsubscribe = scheduleStore.subscribeRealtime()
 })
+
+onUnmounted(() => unsubscribe?.())
 </script>
 
 <template>

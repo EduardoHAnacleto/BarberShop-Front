@@ -5,7 +5,7 @@ import dayjs from 'dayjs'
 import type { Appointment, ReportsSummary } from '~/types'
 
 const { api } = useApi()
-const { onAppointmentsChanged } = useSignalR()
+const { onAppointmentsChanged, onScheduleChanged } = useSignalR()
 
 // Async-loaded chart components so Chart.js is not in the initial bundle.
 const DashboardAppointmentsByDayChart = defineAsyncComponent(
@@ -110,6 +110,7 @@ let unsubAppointments: (() => void) | null = null
 let unsubWorkers: (() => void) | null = null
 let unsubCustomers: (() => void) | null = null
 let unsubReports: (() => void) | null = null
+let unsubSchedule: (() => void) | null = null
 
 onMounted(async () => {
   await Promise.all([
@@ -129,6 +130,11 @@ onMounted(async () => {
   // appointment list's composition doesn't otherwise need reloading, so
   // this subscribes on its own rather than piggybacking on a store.
   unsubReports = onAppointmentsChanged(refreshReports)
+
+  // The Shop Open/Closed badge is derived from a one-off checkIsOpen() call,
+  // not store state, so it goes stale the same way revenue did until another
+  // admin's schedule/closure edit is reflected here too.
+  unsubSchedule = onScheduleChanged(refreshOpenStatus)
 })
 
 onUnmounted(() => {
@@ -136,6 +142,7 @@ onUnmounted(() => {
   unsubWorkers?.()
   unsubCustomers?.()
   unsubReports?.()
+  unsubSchedule?.()
 })
 </script>
 

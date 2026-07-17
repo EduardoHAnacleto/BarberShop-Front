@@ -48,7 +48,14 @@ async function confirmDelete(): Promise<void> {
   }
 }
 
-onMounted(() => reviewsStore.fetchAll())
+let unsubscribe: (() => void) | null = null
+
+onMounted(() => {
+  reviewsStore.fetchAll()
+  unsubscribe = reviewsStore.subscribeRealtime()
+})
+
+onUnmounted(() => unsubscribe?.())
 </script>
 
 <template>
