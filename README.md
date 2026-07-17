@@ -27,21 +27,25 @@ Designed as a production-inspired application to demonstrate modern software eng
 - Analytics Dashboard
 
 - Anonymous Booking flow
+- ![](assets/AnonymousBooking.gif) 
 <p align="center">
     <img src="assets/AnonymousBooking.gif" width="90%">
 </p>
 
 - Employee Panel
+- ![](assets/Worker.gif)
 <p align="center">
     <img src="assets/Worker.gif" width="90%">
 </p>
 
 - Admin Panel
+- ![](assets/AdminPanel.gif)
 <p align="center">
     <img src="assets/AdminPanel.gif" width="90%">
 </p>
 
-- Instant Update of whole system using SignalR (From left to right: Customer Booking - Employee Panel - Admin Panel) 
+- Instant Update of whole system using SignalR (From left to right: Customer Booking - Employee Panel - Admin Panel)
+- ![](assets/SignalRBooking.gif)
 <p align="center">
     <img src="assets/SignalRBooking.gif" width="90%">
 </p>
