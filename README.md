@@ -82,7 +82,12 @@ docker compose up --build
 ```
 
 Starts the complete development environment.
+Or
 
+Download and Run the image simply by using the command:
+```bash
+docker run -d --name barbershop-full ghcr.io/eduardohanacleto/barbershop-full:1.0.0
+```
 ---
 
 # 🏗 Architecture
